@@ -4,5 +4,6 @@ public class AuthProxyConfig
 {
     public const string ConfigSectionName = "AuthProxy";
 
-    public string? AppUrl { get; set; }
+    public BackendConfig? Backend { get; set; }
+    public AuthenticationConfig? Authentication { get; set; }
 }
