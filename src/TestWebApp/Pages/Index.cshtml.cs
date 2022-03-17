@@ -12,6 +12,7 @@ public class IndexModel : PageModel
     public IList<InspectorValue>? RequestInfo { get; set; }
     public IList<InspectorValue>? HttpHeadersInfo { get; set; }
     public IList<InspectorValue>? IdentityInfo { get; set; }
+    public IList<InspectorValue>? ClaimsInfo { get; set; }
 
     public IndexModel(ILogger<IndexModel> logger)
     {
@@ -23,6 +24,7 @@ public class IndexModel : PageModel
         this.RequestInfo = GetRequestInfo(this.Request);
         this.HttpHeadersInfo = GetHttpHeadersInfo(this.Request);
         this.IdentityInfo = GetIdentityInfo(this.User);
+        this.ClaimsInfo = GetClaimsInfo(this.User);
     }
 
     private static IList<InspectorValue> GetRequestInfo(HttpRequest request)
@@ -58,10 +60,18 @@ public class IndexModel : PageModel
         var info = new List<InspectorValue>();
         if (user.Identity != null)
         {
-            var identity = (ClaimsIdentity)user.Identity;
             info.Add(new InspectorValue("user-name", "User Name", user.Identity.Name));
             info.Add(new InspectorValue("user-isauthenticated", "User Is Authenticated", user.Identity.IsAuthenticated));
             info.Add(new InspectorValue("user-authenticationtype", "User Authentication Type", user.Identity.AuthenticationType));
+        }
+        return info;
+    }
+
+    private static IList<InspectorValue> GetClaimsInfo(ClaimsPrincipal user)
+    {
+        var info = new List<InspectorValue>();
+        if (user.Identity is ClaimsIdentity identity)
+        {
             foreach (var claim in identity.Claims.OrderBy(c => c.Type))
             {
                 info.Add(new InspectorValue("user-claim-" + claim.Type, claim.Type, claim.Value));
