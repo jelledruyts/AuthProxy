@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuthProxy", "AuthProxy\AuthProxy.csproj", "{2EC794D0-C65B-4BFC-B465-418A8BC9C119}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestWebApp", "TestWebApp\TestWebApp.csproj", "{25521837-ADD8-41DC-BA4C-134E29C3730C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2EC794D0-C65B-4BFC-B465-418A8BC9C119}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2EC794D0-C65B-4BFC-B465-418A8BC9C119}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2EC794D0-C65B-4BFC-B465-418A8BC9C119}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2EC794D0-C65B-4BFC-B465-418A8BC9C119}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25521837-ADD8-41DC-BA4C-134E29C3730C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25521837-ADD8-41DC-BA4C-134E29C3730C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25521837-ADD8-41DC-BA4C-134E29C3730C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25521837-ADD8-41DC-BA4C-134E29C3730C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,14 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<h3>Identity</h3>
+<partial name="_Table" model="Model.IdentityInfo" />
+
+<h3>Request</h3>
+<partial name="_Table" model="Model.RequestInfo" />
+
+<h3>HTTP Headers</h3>
+<partial name="_Table" model="Model.HttpHeadersInfo" />
