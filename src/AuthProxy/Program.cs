@@ -79,15 +79,46 @@ var defaultTransformer = HttpTransformer.Default;
 var customTransformer = new YarpHttpTransformer(authProxyConfig.Authentication.Cookie.Name, new TokenIssuer(authProxyConfig.Authentication.TokenIssuer.Audience, authProxyConfig.Authentication.TokenIssuer.Issuer, authProxyConfig.Authentication.TokenIssuer.Expiration.Value, authProxyConfig.Authentication.TokenIssuer.SigningSecret));
 var requestOptions = new ForwarderRequestConfig { ActivityTimeout = TimeSpan.FromSeconds(100) };
 
+// TODO: Configurable login endpoint.
+app.Map("/.auth/login", async httpContext =>
+{
+    // TODO: Capture and process "return URL".
+    var returnUrl = "/";
+    if (httpContext.User.Identity?.IsAuthenticated != true)
+    {
+        // TODO: Choose scheme based on requested provider in URL (e.g. "/.auth/login/<provider-name>").
+        await httpContext.ChallengeAsync(OpenIdConnectDefaults.AuthenticationScheme, new AuthenticationProperties { RedirectUri = returnUrl });
+    }
+    else
+    {
+        httpContext.Response.StatusCode = (int)HttpStatusCode.Found;
+        httpContext.Response.Headers.Location = returnUrl;
+    }
+});
+
+// TODO: Configurable logout endpoint.
+app.Map("/.auth/logout", async httpContext =>
+{
+    // TODO: Capture and process "return URL".
+    var returnUrl = "/";
+    if (httpContext.User.Identity?.IsAuthenticated == true)
+    {
+        // TODO: If configured, also trigger Single Sign-Out across all authenticated IdPs.
+        await httpContext.SignOutAsync(new AuthenticationProperties { RedirectUri = returnUrl });
+    }
+    httpContext.Response.StatusCode = (int)HttpStatusCode.Found;
+    httpContext.Response.Headers.Location = returnUrl;
+});
+
 // Map endpoints.
 app.Map("/{**catch-all}", async httpContext =>
 {
-    var isAuth = httpContext.User.Identity?.IsAuthenticated;
-    if (isAuth != true)
-    {
-        await httpContext.ChallengeAsync(OpenIdConnectDefaults.AuthenticationScheme);
-    }
-    else
+    // if (httpContext.User.Identity?.IsAuthenticated != true)
+    // {
+    //     // TODO: Don't *always* authenticate, should be configurable based on path or other conditions.
+    //     await httpContext.ChallengeAsync(OpenIdConnectDefaults.AuthenticationScheme);
+    // }
+    // else
     {
         var error = await forwarder.SendAsync(httpContext, authProxyConfig.Backend.Url, httpClient, requestOptions, customTransformer);
         if (error != ForwarderError.None)

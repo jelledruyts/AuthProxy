@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch AuthProxy",
+            "name": "AuthProxy",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
@@ -22,7 +22,7 @@
             }
         },
         {
-            "name": "Launch TestWebApp",
+            "name": "TestWebApp",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
@@ -47,8 +47,8 @@
         {
             "name": "Launch All",
             "configurations": [
-                "Launch AuthProxy",
-                "Launch TestWebApp"
+                "AuthProxy",
+                "TestWebApp"
             ],
             "preLaunchTask": "build",
             "stopAll": true

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using Microsoft.AspNetCore.Authentication;
 using Yarp.ReverseProxy.Forwarder;
 
 namespace AuthProxy.Infrastructure;
@@ -36,25 +37,28 @@ public class YarpHttpTransformer : HttpTransformer
         // Remove auth cookie in the request towards the app as it's internal to the proxy.
         // TODO: Add defensive coding to protect against maliciously formed cookie headers.
         // https://datatracker.ietf.org/doc/html/rfc6265#section-5.4
-        var newCookieHeader = new StringBuilder();
-        foreach (var cookieHeader in proxyRequest.Headers.GetValues(CookieHeaderName))
+        if (proxyRequest.Headers.Contains(CookieHeaderName))
         {
-            foreach (var cookie in cookieHeader.Split(CookieSeparator))
+            var newCookieHeader = new StringBuilder();
+            foreach (var cookieHeader in proxyRequest.Headers.GetValues(CookieHeaderName))
             {
-                if (!cookie.StartsWith(this.authProxyCookiePrefix))
+                foreach (var cookie in cookieHeader.Split(CookieSeparator))
                 {
-                    if (newCookieHeader.Length > 0)
+                    if (!cookie.StartsWith(this.authProxyCookiePrefix))
                     {
-                        newCookieHeader.Append(CookieSeparator);
+                        if (newCookieHeader.Length > 0)
+                        {
+                            newCookieHeader.Append(CookieSeparator);
+                        }
+                        newCookieHeader.Append(cookie);
                     }
-                    newCookieHeader.Append(cookie);
                 }
             }
-        }
-        proxyRequest.Headers.Remove(CookieHeaderName);
-        if (newCookieHeader.Length > 0)
-        {
-            proxyRequest.Headers.Add(CookieHeaderName, newCookieHeader.ToString());
+            proxyRequest.Headers.Remove(CookieHeaderName);
+            if (newCookieHeader.Length > 0)
+            {
+                proxyRequest.Headers.Add(CookieHeaderName, newCookieHeader.ToString());
+            }
         }
 
         if (httpContext.User.Identity?.IsAuthenticated == true)
@@ -86,14 +90,29 @@ public class YarpHttpTransformer : HttpTransformer
     /// etc.</returns>
     public override async ValueTask<bool> TransformResponseAsync(HttpContext httpContext, HttpResponseMessage? proxyResponse)
     {
+        // The app can communicate back to the proxy with response HTTP headers, which can then take action.
+        // Only do this if there is no logical better alternative, like a direct inbound URL from the app (e.g. "/.auth/logout").
+        if (proxyResponse != null && proxyResponse.Headers.Contains("X-Auth-Action"))
+        {
+            var action = proxyResponse.Headers.GetValues("X-Auth-Action").First();
+            httpContext.Response.Clear();
+            if (action == "logout")
+            {
+                var returnUrl = "/";
+                await httpContext.SignOutAsync(new AuthenticationProperties { RedirectUri = returnUrl });
+                httpContext.Response.StatusCode = (int)HttpStatusCode.Found;
+                httpContext.Response.Headers.Location = returnUrl;
+            }
+            return false;
+        }
         // Perform default behavior.
         var shouldProxy = await HttpTransformer.Default.TransformResponseAsync(httpContext, proxyResponse);
 
-        // Copy the relevant response headers.
         if (shouldProxy)
         {
-            // Add custom headers as required.
-            httpContext.Response.Headers.Add("X-Auth-Response", "OK");
+            // Add custom headers on the response back to the client.
+            // This should generally be avoided though as the proxy is supposed to be transparent to the client.
+            // httpContext.Response.Headers.Add("X-Auth-Response", "OK");
         }
         return shouldProxy;
     }

@@ -2,6 +2,7 @@ namespace AuthProxy.Configuration;
 
 public class IdentityProviderConfig
 {
+    public string? Name { get; set; }
     public IdentityProviderType Type { get; set; } = IdentityProviderType.OpenIdConnect;
     public string? Authority { get; set; }
     public string? ClientId { get; set; }
