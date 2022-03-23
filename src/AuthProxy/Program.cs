@@ -1,62 +1,46 @@
-using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
-using System.Net;
 using AuthProxy.Configuration;
 using AuthProxy.Infrastructure;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Yarp.ReverseProxy.Forwarder;
 
 // Set up the web application and DI container.
 var builder = WebApplication.CreateBuilder(args);
 
 // Retrieve configuration.
 var authProxyConfig = new AuthProxyConfig();
-builder.Configuration.Bind(AuthProxyConfig.ConfigSectionName, authProxyConfig);
-ArgumentNullException.ThrowIfNull(authProxyConfig.Backend?.Url);
-ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication?.Cookie?.Name);
-ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication?.TokenIssuer?.Audience);
-ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication?.TokenIssuer?.Issuer);
-ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication?.TokenIssuer?.Expiration);
-ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication?.TokenIssuer?.SigningSecret);
-ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication?.IdentityProvider?.Authority);
-ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication?.IdentityProvider?.ClientId);
-ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication?.IdentityProvider?.ClientSecret); // TODO: Only if needed (depending on auth flow)
+builder.Configuration.Bind("AuthProxy", authProxyConfig);
+authProxyConfig.Validate();
+AuthProxyConfig.Instance = authProxyConfig;
+ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication?.IdentityProviders);
+var defaultIdentityProvider = authProxyConfig.Authentication.DefaultIdentityProvider;
 
 // Add the YARP Direct HTTP Forwarder.
 builder.Services.AddHttpForwarder();
 
 // Add authentication services.
 // TODO: External key for cookie and other crypto operations?
-// TODO: Based on config which providers!
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // Don't map any standard OpenID Connect claims to Microsoft-specific claims.
 var authenticationBuilder = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme);
-if (authProxyConfig.Authentication.IdentityProvider.Type == IdentityProviderType.OpenIdConnect)
+
+// Add all identity providers as authentication services.
+if (defaultIdentityProvider != null)
 {
-    authenticationBuilder.AddOpenIdConnect(options =>
-    {
-        options.ClaimActions.Clear(); // Don't remove any incoming claims.
-        options.Authority = authProxyConfig.Authentication.IdentityProvider.Authority;
-        options.TokenValidationParameters.ValidAudiences = new[] { authProxyConfig.Authentication.IdentityProvider.Audience };
-        options.ClientId = authProxyConfig.Authentication.IdentityProvider.ClientId;
-        options.ClientSecret = authProxyConfig.Authentication.IdentityProvider.ClientSecret;
-        options.CallbackPath = authProxyConfig.Authentication.IdentityProvider.CallbackPath;
-    });
+    // Add an authentication service for the default IdP (e.g. "/.auth/login").
+    // Note that it will be added again later on, but in order to get a clean URL for the case where
+    // there's only a single IdP, it has to be added specifically as the login callback path
+    // has to be unique for each registered authentication service.
+    authenticationBuilder.AddIdentityProvider(defaultIdentityProvider, authProxyConfig.Authentication.GetDefaultAuthenticationScheme(), authProxyConfig.Authentication.GetDefaultLoginCallbackPath());
 }
-// else if (authProxyConfig.Authentication.IdentityProvider.Type == IdentityProviderType.JwtBearer)
-// {
-//     authenticationBuilder.AddJwtBearer(options =>
-//     {
-//         // TODO: Make configurable where the incoming JWT is found.
-//         // https://stackoverflow.com/questions/56857905/how-to-customize-bearer-header-keyword-in-asp-net-core-for-jwtbearer-and-system
-//         options.Authority = authProxyConfig.Authentication.IdentityProvider.Authority;
-//     });
-// }
+foreach (var identityProvider in authProxyConfig.Authentication.IdentityProviders)
+{
+    authenticationBuilder.AddIdentityProvider(identityProvider, authProxyConfig.Authentication.GetAuthenticationScheme(identityProvider), authProxyConfig.Authentication.GetLoginCallbackPath(identityProvider));
+}
+
+// Add cookie authentication as the final user session provider.
 authenticationBuilder.AddCookie(options =>
 {
     // TODO: Also rename other cookies (.AspNetCore.* for correlation and nonce for example)
-    options.Cookie.Name = authProxyConfig.Authentication.Cookie.Name;
+    options.Cookie.Name = authProxyConfig.Authentication.Cookie!.Name;
 });
 
 var app = builder.Build();
@@ -64,70 +48,22 @@ var app = builder.Build();
 // Configure authentication.
 app.UseAuthentication();
 
+// Map login paths for identity providers.
+if (defaultIdentityProvider != null)
+{
+    // Map a login path for the default IdP (e.g. "/.auth/login").
+    app.MapIdentityProviderLogin(defaultIdentityProvider, authProxyConfig.Authentication.GetDefaultAuthenticationScheme(), authProxyConfig.Authentication.GetDefaultLoginPath());
+}
+foreach (var identityProvider in authProxyConfig.Authentication.IdentityProviders)
+{
+    // Map a login path per IdP (e.g. "/.auth/login/<provider-name>").
+    app.MapIdentityProviderLogin(identityProvider, authProxyConfig.Authentication.GetAuthenticationScheme(identityProvider), authProxyConfig.Authentication.GetLoginPath(identityProvider));
+}
+
+// Map a global logout path.
+app.MapLogout(authProxyConfig.Authentication.GetLogoutPath());
+
 // Configure YARP.
-var forwarder = app.Services.GetRequiredService<IHttpForwarder>();
-var httpClient = new HttpMessageInvoker(new SocketsHttpHandler()
-{
-    UseProxy = false,
-    AllowAutoRedirect = false,
-    AutomaticDecompression = DecompressionMethods.None,
-    UseCookies = false,
-    ActivityHeadersPropagator = new ReverseProxyPropagator(DistributedContextPropagator.Current)
-});
-
-var defaultTransformer = HttpTransformer.Default;
-var customTransformer = new YarpHttpTransformer(authProxyConfig.Authentication.Cookie.Name, new TokenIssuer(authProxyConfig.Authentication.TokenIssuer.Audience, authProxyConfig.Authentication.TokenIssuer.Issuer, authProxyConfig.Authentication.TokenIssuer.Expiration.Value, authProxyConfig.Authentication.TokenIssuer.SigningSecret));
-var requestOptions = new ForwarderRequestConfig { ActivityTimeout = TimeSpan.FromSeconds(100) };
-
-// TODO: Configurable login endpoint.
-app.Map("/.auth/login", async httpContext =>
-{
-    // TODO: Capture and process "return URL".
-    var returnUrl = "/";
-    if (httpContext.User.Identity?.IsAuthenticated != true)
-    {
-        // TODO: Choose scheme based on requested provider in URL (e.g. "/.auth/login/<provider-name>").
-        await httpContext.ChallengeAsync(OpenIdConnectDefaults.AuthenticationScheme, new AuthenticationProperties { RedirectUri = returnUrl });
-    }
-    else
-    {
-        httpContext.Response.StatusCode = (int)HttpStatusCode.Found;
-        httpContext.Response.Headers.Location = returnUrl;
-    }
-});
-
-// TODO: Configurable logout endpoint.
-app.Map("/.auth/logout", async httpContext =>
-{
-    // TODO: Capture and process "return URL".
-    var returnUrl = "/";
-    if (httpContext.User.Identity?.IsAuthenticated == true)
-    {
-        // TODO: If configured, also trigger Single Sign-Out across all authenticated IdPs.
-        await httpContext.SignOutAsync(new AuthenticationProperties { RedirectUri = returnUrl });
-    }
-    httpContext.Response.StatusCode = (int)HttpStatusCode.Found;
-    httpContext.Response.Headers.Location = returnUrl;
-});
-
-// Map endpoints.
-app.Map("/{**catch-all}", async httpContext =>
-{
-    // if (httpContext.User.Identity?.IsAuthenticated != true)
-    // {
-    //     // TODO: Don't *always* authenticate, should be configurable based on path or other conditions.
-    //     await httpContext.ChallengeAsync(OpenIdConnectDefaults.AuthenticationScheme);
-    // }
-    // else
-    {
-        var error = await forwarder.SendAsync(httpContext, authProxyConfig.Backend.Url, httpClient, requestOptions, customTransformer);
-        if (error != ForwarderError.None)
-        {
-            var errorFeature = httpContext.Features.Get<IForwarderErrorFeature>();
-            var exception = errorFeature?.Exception;
-            // TODO: Log
-        }
-    }
-});
+app.MapReverseProxy(authProxyConfig);
 
 app.Run();

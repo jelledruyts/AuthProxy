@@ -24,7 +24,7 @@ The reverse proxy should be able to:
 
 The proxy should never host a User Interface, i.e. it should not generate HTML and only work with the IdP and app but not "present itself" to the end user.
 
-The proxy interacts with the application only through a stable HTTP based "contract". For example, the app generally shouldn't care if the user just authenticated directly from the IdP, or if authentication was performed through a session cookie for a subsequent call. The app should mostly expect to see the same relevant information passed in for each call.
+The proxy interacts with the application only through a stable HTTP based "contract". For example, the app generally shouldn't care if the user just authenticated directly from the IdP, or if authentication was performed through a session cookie for a subsequent call. The app should expect to see the same relevant information passed in for each call.
 
 On top of that, to make it easier to build apps using the reverse proxy, a client SDK for all major runtimes/languages (.NET, Java, Python, Go, ...) could be convenient to:
 
@@ -49,6 +49,22 @@ Because you should be able to host the proxy in a variety of ways, its implement
 
 Configuration could be provided as environment variables, configuration files, an external configuration API endpoint (which is called at startup), ...
 
+## Security
+
+Communication between the proxy and the backend app should be secured.
+
+- Outbound security (proxy to app)
+  - Options:
+    - Client Certificate
+- Inbound security (app to proxy)
+  - The proxy's API should be opt-in enabled i.e. only expose the API if required by the API
+  - Options:
+    - None (discouraged, only if sufficient transport-level security can be enforced such as network ACLs)
+    - Basic authentication
+    - Fixed API key
+    - Client Certificate
+    - Authentication token: a round-tripped opaque token which the proxy sends on each outbound call to the app as an HTTP header (which can rotate each call or be cryptographically secured); the app simply forwards that on the call to the API to prove its identity; possibly this token also contains the unique user ID as known in proxy so it doesn't need additional parameters to identify the user
+
 ## Dynamic Actions
 
 Some decisions aren't static or configuration-driven, for example to trigger authentication or MFA based on business logic. The app can then instruct the proxy to perform certain functionality, for example by returning well-defined HTTP headers to trigger an authentication challenge:
@@ -66,7 +82,10 @@ Again, this can be made easier for app developers by using the client SDK for th
 
 ## Notes
 
-- App Service Easy Auth is the closest we have to a realization of the idea today, but locked to App Service.
+- App Service Easy Auth is the closest we have to a realization of the idea today at Microsoft, but locked to App Service.
+  - See [Configuration File Reference](https://docs.microsoft.com/azure/app-service/configure-authentication-file-based#configuration-file-reference) for relevant ideas.
+- The Azure API Management Token Store also aims for a related mission.
+- There are somewhat similar implementations but they don't go as deep and they're a part of other stacks, for example [Ambassador Edge Stack](https://www.getambassador.io/docs/edge-stack/latest/howtos/oauth-oidc-auth/).
 - This should be provided out of the box in Dapr
   - [Dapr middleware](https://docs.dapr.io/reference/components-reference/supported-middleware/) has some of this functionality (but built-in to the Dapr sidecar itself and not externalized/pluggable as another sidecar?)
     - [OAuth2](https://github.com/dapr/components-contrib/blob/master/middleware/http/oauth2/oauth2_middleware.go) supports authorization code exchange and then puts the acquired token on the call to the actual Dapr service.
