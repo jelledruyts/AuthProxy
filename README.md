@@ -49,6 +49,18 @@ Because you should be able to host the proxy in a variety of ways, its implement
 
 Configuration could be provided as environment variables, configuration files, an external configuration API endpoint (which is called at startup), ...
 
+## Claims Transformation
+
+Auth Proxy uses incoming claims from the IdPs.
+
+- For OIDC: uses the id_token (not any access_token as this is opaque to the client and shouldn't carry *authentication* information).
+- For SAML protocol and WS-Federation: uses the SAML token assertions.
+- For JWT: uses the claims from the incoming bearer token (typically an OAuth2 access_token intended for this relying party).
+
+At a minimum, should return:
+
+- A unique user identifier: provide a collection of claims that will be concatenated together to form a stable uid (default: iss + '.' + sub).
+
 ## Security
 
 Communication between the proxy and the backend app should be secured.

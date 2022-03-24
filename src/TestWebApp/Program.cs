@@ -24,7 +24,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters.ValidIssuer = "AuthProxy";
-        options.TokenValidationParameters.ValidAudience = "MyAudience";
+        options.TokenValidationParameters.ValidAudience = "AuthProxyBackendApp";
         // Skip checking of the signature.
         // TODO: Check against configured signing key of AuthProxy by having it expose OIDC metadata.
         options.TokenValidationParameters.SignatureValidator = (string token, TokenValidationParameters parameters) => new JwtSecurityToken(token);

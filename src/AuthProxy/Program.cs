@@ -52,12 +52,12 @@ app.UseAuthentication();
 if (defaultIdentityProvider != null)
 {
     // Map a login path for the default IdP (e.g. "/.auth/login").
-    app.MapIdentityProviderLogin(defaultIdentityProvider, authProxyConfig.Authentication.GetDefaultAuthenticationScheme(), authProxyConfig.Authentication.GetDefaultLoginPath());
+    app.MapIdentityProviderLogin(authProxyConfig.Authentication.GetDefaultAuthenticationScheme(), authProxyConfig.Authentication.GetDefaultLoginPath());
 }
 foreach (var identityProvider in authProxyConfig.Authentication.IdentityProviders)
 {
     // Map a login path per IdP (e.g. "/.auth/login/<provider-name>").
-    app.MapIdentityProviderLogin(identityProvider, authProxyConfig.Authentication.GetAuthenticationScheme(identityProvider), authProxyConfig.Authentication.GetLoginPath(identityProvider));
+    app.MapIdentityProviderLogin(authProxyConfig.Authentication.GetAuthenticationScheme(identityProvider), authProxyConfig.Authentication.GetLoginPath(identityProvider));
 }
 
 // Map a global logout path.

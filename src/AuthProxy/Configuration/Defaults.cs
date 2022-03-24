@@ -8,4 +8,5 @@ public static class Defaults
     public const string LogoutPath = "/.auth/logout";
     public const string AuthenticationCookieName = ".AuthProxy";
     public static readonly TimeSpan TokenIssuerExpiration = TimeSpan.FromHours(1);
+    public const string SubjectClaimValueSeparator = "@";
 }

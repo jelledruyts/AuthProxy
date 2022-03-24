@@ -14,35 +14,7 @@ public static class ExtensionMethods
         {
             authenticationBuilder.AddOpenIdConnect(authenticationScheme, options =>
             {
-                options.ClaimActions.Clear(); // Don't remove any incoming claims.
-                options.Authority = identityProvider.Authority;
-                if (identityProvider.Scopes != null)
-                {
-                    foreach (var scope in identityProvider.Scopes)
-                    {
-                        options.Scope.Add(scope);
-                    }
-                }
-                // options.Scope.Add(OpenIdConnectScope.OfflineAccess); // TODO: Only if needed, request a refresh token as part of the authorization code flow.
-
-                options.TokenValidationParameters.ValidAudiences = identityProvider.AllowedAudiences;
-                options.ClientId = identityProvider.ClientId;
-                options.ClientSecret = identityProvider.ClientSecret;
-                options.CallbackPath = loginCallbackPath; // The callback path must be unique per identity provider.
-
-                options.Events.OnRedirectToIdentityProvider = (context) =>
-                    {
-                        // Pass through additional parameters if requested.
-                        identityProvider.AdditionalParameters.CopyTo(context.ProtocolMessage.Parameters);
-                        return Task.CompletedTask;
-                    };
-
-                options.Events.OnRedirectToIdentityProviderForSignOut = (context) =>
-                {
-                    // Pass through additional parameters if requested.
-                    identityProvider.AdditionalParametersForLogout.CopyTo(context.ProtocolMessage.Parameters);
-                    return Task.CompletedTask;
-                };
+                new OpenIdConnectHandler(identityProvider, options, loginCallbackPath);
             });
         }
         // else if (authProxyConfig.Authentication.IdentityProvider.Type == IdentityProviderType.JwtBearer)
@@ -56,7 +28,7 @@ public static class ExtensionMethods
         // }
     }
 
-    public static void MapIdentityProviderLogin(this IEndpointRouteBuilder endpoints, IdentityProviderConfig identityProvider, string authenticationScheme, string loginPath)
+    public static void MapIdentityProviderLogin(this IEndpointRouteBuilder endpoints, string authenticationScheme, string loginPath)
     {
         // TODO: Log the path being mapped.
         endpoints.Map(loginPath, async httpContext =>
@@ -119,6 +91,7 @@ public static class ExtensionMethods
             // }
             // else
             {
+                // Forward the incoming request to the backend app.
                 var error = await forwarder.SendAsync(httpContext, authProxyConfig.Backend!.Url!, httpClient, requestOptions, customTransformer);
                 if (error != ForwarderError.None)
                 {
@@ -130,24 +103,35 @@ public static class ExtensionMethods
         });
     }
 
-    public static void CopyTo(this string[]? values, IDictionary<string, string> target)
+    public static IDictionary<string, string> ParseKeyValuePairs(this IEnumerable<string?>? keyValuePairs, bool allowShorthandForm)
     {
-        if (values != null)
+        var result = new Dictionary<string, string>();
+        if (keyValuePairs != null)
         {
-            foreach (var keyValue in values.Where(p => p != null))
+            foreach (var keyValue in keyValuePairs.Where(p => p != null))
             {
-                var parts = keyValue.Split('=');
-                if (parts.Length != 2)
+                var parts = keyValue!.Split('=', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                var key = parts[0];
+                if (parts.Length == 1 && allowShorthandForm)
                 {
-                    // TODO: Log
+                    // The value "<key>" is short hand syntax for "<key>=<key>".
+                    result[key] = key;
+                }
+                else if (parts.Length != 2)
+                {
+                    throw new ArgumentException($"Could not parse key/value pair: \"keyValue\".", nameof(keyValuePairs));
                 }
                 else
                 {
-                    var key = parts[0];
-                    var value = parts[1];
-                    target[key] = value;
+                    result[key] = parts[1];
                 }
             }
         }
+        return result;
+    }
+
+    public static void Merge(this IDictionary<string, string> target, IDictionary<string, string> source)
+    {
+        source.ToList().ForEach(x => target[x.Key] = x.Value);
     }
 }

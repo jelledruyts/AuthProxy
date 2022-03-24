@@ -9,6 +9,7 @@ public class IdentityProviderConfig
     public string? ClientSecret { get; set; } // TODO: ClientSecretEnvVarName/Reference/...?
     public string[]? Scopes { get; set; }
     public string[]? AllowedAudiences { get; set; }
+    public string[]? ClaimTransformations { get; set; }
     public string[]? AdditionalParameters { get; set; }
     public string[]? AdditionalParametersForLogout { get; set; }
     public string? LoginPath { get; set; }

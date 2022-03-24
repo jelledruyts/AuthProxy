@@ -64,7 +64,6 @@ public class YarpHttpTransformer : HttpTransformer
         if (httpContext.User.Identity?.IsAuthenticated == true)
         {
             // TODO: Token should be cached rather than recreated for each request.
-            // TODO: Explicitly map and transform the user claims from the incoming token, don't just copy everything over.
             var backendAppToken = this.tokenIssuer.CreateToken(httpContext.User.Claims);
             proxyRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", backendAppToken);
             // TODO: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
