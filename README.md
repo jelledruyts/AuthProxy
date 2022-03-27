@@ -7,12 +7,13 @@ This project intends to remove identity complexity from application developers a
 The reverse proxy should be able to:
 
 - Take care of all redirects towards the IdP when authentication is required, and the responses coming back.
-- Pass through relevant identity information to the application (possibly without exposing full details, for example only pass the `id_token` or even a specific set of claims as HTTP headers).
+- Pass through relevant identity information to the application without exposing full details from the IdP (unless absolutely necessary), for example only pass a specific set of claims to the app as a JWT token or via HTTP headers.
 - Maintain session state for each user (i.e. issue and verify the session cookie).
 - Acquire tokens (id tokens, access tokens, refresh tokens) from the IdP and cache them securely and appropriately.
-- Support multiple authentication and authorization protocols (OpenID Connect, OAuth 2.0, likely SAML 2.0, possibly WS-Federation).
-- Allow the app to request tokens to call other API's. On top of that, allow the app to request calls to other API's to be performed by the proxy so that the app doesn't even have to get access to the tokens (the reverse proxy requests them as needed and attaches them to the outbound call to the external API).
-- Possibly support multiple IdP's for a single application (although in such a case a "federation broker" IdP such as Auth0 or Azure AD B2C may be more suitable).
+- Support multiple authentication and authorization protocols (OpenID Connect, OAuth 2.0, SAML 2.0, WS-Federation).
+- Allow the app to request calls to other API's to be performed by the proxy so that the app doesn't even have to get access to the tokens (the reverse proxy requests them as needed and attaches them to the outbound call to the external API). This improves security dramatically in a Zero Trust context, as the app never sees the token.
+- Allow the app to request tokens to call other API's or use in the app itself (when it cannot be avoided, for example to attach tokens to SQL connections or SDK's used in the app).
+- Support multiple IdP's for a single application (although for more advanced cases a "federation broker" IdP such as Auth0 or Azure AD B2C may be more suitable).
 - Expose value-added functionality that is IdP-specific, for example:
   - Support [incremental or dynamic consent when using the Microsoft identity platform](https://docs.microsoft.com/azure/active-directory/develop/v2-permissions-and-consent#incremental-and-dynamic-user-consent).
   - Support workload identity federation as implemented by [Azure AD](https://docs.microsoft.com/azure/active-directory/develop/workload-identity-federation) or [Google](https://cloud.google.com/iam/docs/workload-identity-federation).
@@ -45,8 +46,7 @@ The proxy can be deployed in many ways for maximum flexibility:
 
 ## Configuration
 
-Because you should be able to host the proxy in a variety of ways, its implementation should be considered a black box which is driven purely from configuration. For example, the available IdPs, anonymous versus authenticated paths, external APIs, scopes, ...
-
+Because you should be able to host the proxy in a variety of ways, its implementation should be considered a black box which is driven purely from configuration. For example, the available IdPs, anonymous versus authenticated paths, external APIs, scopes, ... The proxy should be *insanely configurable*.
 Configuration could be provided as environment variables, configuration files, an external configuration API endpoint (which is called at startup), ...
 
 ## Claims Transformation

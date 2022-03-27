@@ -2,8 +2,6 @@ namespace AuthProxy.Configuration;
 
 public class AuthProxyConfig
 {
-    public static AuthProxyConfig? Instance { get; set; }
-    
     public BackendConfig? Backend { get; set; }
     public AuthenticationConfig? Authentication { get; set; }
 

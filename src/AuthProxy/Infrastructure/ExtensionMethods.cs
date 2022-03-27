@@ -1,8 +1,6 @@
-using System.Diagnostics;
 using System.Net;
 using AuthProxy.Configuration;
 using Microsoft.AspNetCore.Authentication;
-using Yarp.ReverseProxy.Forwarder;
 
 namespace AuthProxy.Infrastructure;
 
@@ -62,44 +60,6 @@ public static class ExtensionMethods
             }
             httpContext.Response.StatusCode = (int)HttpStatusCode.Found;
             httpContext.Response.Headers.Location = returnUrl;
-        });
-    }
-
-    public static void MapReverseProxy(this WebApplication app, AuthProxyConfig authProxyConfig)
-    {
-        var forwarder = app.Services.GetRequiredService<IHttpForwarder>();
-        var httpClient = new HttpMessageInvoker(new SocketsHttpHandler()
-        {
-            UseProxy = false,
-            AllowAutoRedirect = false,
-            AutomaticDecompression = DecompressionMethods.None,
-            UseCookies = false,
-            ActivityHeadersPropagator = new ReverseProxyPropagator(DistributedContextPropagator.Current)
-        });
-
-        var defaultTransformer = HttpTransformer.Default;
-        var customTransformer = new YarpHttpTransformer(authProxyConfig.Authentication!.Cookie!.Name!, new TokenIssuer(authProxyConfig.Authentication!.TokenIssuer!.Audience!, authProxyConfig.Authentication!.TokenIssuer!.Issuer!, authProxyConfig.Authentication!.TokenIssuer!.Expiration!.Value, authProxyConfig.Authentication!.TokenIssuer!.SigningSecret!));
-        var requestOptions = new ForwarderRequestConfig { ActivityTimeout = TimeSpan.FromSeconds(100) };
-
-        // Map any other request to the backend app.
-        app.Map("/{**catch-all}", async httpContext =>
-        {
-            // if (httpContext.User.Identity?.IsAuthenticated != true)
-            // {
-            //     // TODO: Don't *always* authenticate, should be configurable based on path or other conditions.
-            //     await httpContext.ChallengeAsync(scheme);
-            // }
-            // else
-            {
-                // Forward the incoming request to the backend app.
-                var error = await forwarder.SendAsync(httpContext, authProxyConfig.Backend!.Url!, httpClient, requestOptions, customTransformer);
-                if (error != ForwarderError.None)
-                {
-                    var errorFeature = httpContext.Features.Get<IForwarderErrorFeature>();
-                    var exception = errorFeature?.Exception;
-                    // TODO: Log
-                }
-            }
         });
     }
 

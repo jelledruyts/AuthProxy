@@ -9,18 +9,26 @@ var builder = WebApplication.CreateBuilder(args);
 // Retrieve configuration.
 var authProxyConfig = new AuthProxyConfig();
 builder.Configuration.Bind("AuthProxy", authProxyConfig);
-authProxyConfig.Validate();
-AuthProxyConfig.Instance = authProxyConfig;
+authProxyConfig.Validate(); // TODO: Validate upon actual usage (at startup, not at runtime) rather than without context upfront here?
+builder.Services.AddSingleton<AuthProxyConfig>(authProxyConfig);
 ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication?.IdentityProviders);
 var defaultIdentityProvider = authProxyConfig.Authentication.DefaultIdentityProvider;
 
-// Add the YARP Direct HTTP Forwarder.
+// Add YARP services.
 builder.Services.AddHttpForwarder();
+builder.Services.AddSingleton<YarpRequestHandler>();
 
 // Add authentication services.
-// TODO: External key for cookie and other crypto operations?
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // Don't map any standard OpenID Connect claims to Microsoft-specific claims.
 var authenticationBuilder = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme);
+
+// Add cookie authentication as the final user session provider.
+authenticationBuilder.AddCookie(options =>
+{
+    // TODO: Also rename other cookies (.AspNetCore.* for correlation and nonce for example)
+    // TODO: External key for cookie and other crypto operations?
+    options.Cookie.Name = authProxyConfig.Authentication.Cookie!.Name;
+});
 
 // Add all identity providers as authentication services.
 if (defaultIdentityProvider != null)
@@ -35,13 +43,6 @@ foreach (var identityProvider in authProxyConfig.Authentication.IdentityProvider
 {
     authenticationBuilder.AddIdentityProvider(identityProvider, authProxyConfig.Authentication.GetAuthenticationScheme(identityProvider), authProxyConfig.Authentication.GetLoginCallbackPath(identityProvider));
 }
-
-// Add cookie authentication as the final user session provider.
-authenticationBuilder.AddCookie(options =>
-{
-    // TODO: Also rename other cookies (.AspNetCore.* for correlation and nonce for example)
-    options.Cookie.Name = authProxyConfig.Authentication.Cookie!.Name;
-});
 
 var app = builder.Build();
 
@@ -63,7 +64,8 @@ foreach (var identityProvider in authProxyConfig.Authentication.IdentityProvider
 // Map a global logout path.
 app.MapLogout(authProxyConfig.Authentication.GetLogoutPath());
 
-// Configure YARP.
-app.MapReverseProxy(authProxyConfig);
+// Map everything else to YARP.
+var handler = app.Services.GetRequiredService<YarpRequestHandler>();
+app.Map("/{**catch-all}", handler.HandleRequest);
 
 app.Run();
