@@ -1,0 +1,14 @@
+@page
+@model CallApiModel
+@{
+    ViewData["Title"] = "Call API";
+}
+
+<form method="post">
+    <input type="submit">
+</form>
+
+@if (Model.Result != null)
+{
+    <pre>@Model.Result</pre>
+}

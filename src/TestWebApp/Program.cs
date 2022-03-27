@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddHttpClient();
 builder.Services.AddRazorPages()
     .AddRazorRuntimeCompilation();
 builder.Services.AddHttpLogging(options =>

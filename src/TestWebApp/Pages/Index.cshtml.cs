@@ -7,7 +7,7 @@ namespace TestWebApp.Pages;
 
 public class IndexModel : PageModel
 {
-    private readonly ILogger<IndexModel> _logger;
+    private readonly ILogger<IndexModel> logger;
     public IList<InspectorValue>? RequestInfo { get; set; }
     public IList<InspectorValue>? HttpHeadersInfo { get; set; }
     public IList<InspectorValue>? IdentityInfo { get; set; }
@@ -15,7 +15,7 @@ public class IndexModel : PageModel
 
     public IndexModel(ILogger<IndexModel> logger)
     {
-        _logger = logger;
+        this.logger = logger;
     }
 
     public void OnGet()
