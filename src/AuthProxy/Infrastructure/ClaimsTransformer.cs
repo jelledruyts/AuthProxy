@@ -25,38 +25,18 @@ namespace AuthProxy.Infrastructure;
 //     Example: ( "sub": "a", "sub": "b", "iss": "x", "iss": "y" ) => ( "sub": "a b@x y" )
 public class ClaimsTransformer
 {
-    private readonly IdentityProviderConfig identityProvider;
+    public IdentityProviderConfig IdentityProvider { get; }
+    public IDictionary<string, string> ClaimTransformations { get; set; }
     private readonly string outputSubjectClaimType;
     private readonly IEnumerable<string> inputSubjectClaimTypes;
-    private readonly IDictionary<string, string> claimTransformations;
     public string SubjectClaimValueSeparator { get; set; } = Defaults.SubjectClaimValueSeparator;
 
-    public ClaimsTransformer(IdentityProviderConfig identityProvider)
+    public ClaimsTransformer(IdentityProviderConfig identityProvider, IDictionary<string, string> claimTransformations, string outputSubjectClaimType, IEnumerable<string> inputSubjectClaimTypes)
     {
-        this.identityProvider = identityProvider;
-        var configuredClaimTransformations = identityProvider.ClaimTransformations.ParseKeyValuePairs(true);
-        if (identityProvider.Type == IdentityProviderType.OpenIdConnect)
-        {
-            // TODO: (Re)use constants for claim types.
-            var defaultClaimTransformations = new Dictionary<string, string>()
-            {
-                // For defined claims in the  ID token, see https://openid.net/specs/openid-connect-core-1_0.html#IDToken
-                { "iss", "" }, // Don't map the issuer, the backend app can be reached through multiple IdPs and it shouldn't care which one was used.
-                { "sub", "" }, // Don't map the subject as it's unique within the IdP only; the final subject claim will be concatenated with the issuer claim to avoid conflicts between different users with the same subject across IdPs.
-                { "aud", "" }, // Don't map the audience, the backend app can be reached through multiple IdPs/audiences and it shouldn't care which one was used.
-                { "acr", "acr" }, // Map the Authentication Context Class Reference.
-                { "amr", "amr" }, // Map the Authentication Methods References.
-                { "azp", "" } // Don't map the authorized party, the backend app can be reached through multiple clients and it shouldn't care which one was used.
-            };
-            defaultClaimTransformations.Merge(configuredClaimTransformations);
-            this.outputSubjectClaimType = "sub"; // TODO: Make configurable?
-            this.inputSubjectClaimTypes = new[] { "sub", "iss" }; // TODO: Make configurable?
-            this.claimTransformations = defaultClaimTransformations;
-        }
-        else
-        {
-            throw new ArgumentOutOfRangeException(nameof(identityProvider.Type), $"Unknown {nameof(IdentityProviderType)}: \"{identityProvider.Type.ToString()}\".");
-        }
+        this.IdentityProvider = identityProvider;
+        this.ClaimTransformations = claimTransformations;
+        this.outputSubjectClaimType = outputSubjectClaimType;
+        this.inputSubjectClaimTypes = inputSubjectClaimTypes;
     }
 
     public async Task<ClaimsPrincipal?> TransformAsync(ClaimsPrincipal? principal)
@@ -77,9 +57,9 @@ public class ClaimsTransformer
         var output = new List<Claim>();
 
         // Return (only) the mapped claims.
-        foreach (var claim in claims.Where(c => !string.IsNullOrWhiteSpace(c.Type) && this.claimTransformations.ContainsKey(c.Type)))
+        foreach (var claim in claims.Where(c => !string.IsNullOrWhiteSpace(c.Type) && this.ClaimTransformations.ContainsKey(c.Type)))
         {
-            var mappedClaimType = this.claimTransformations[claim.Type];
+            var mappedClaimType = this.ClaimTransformations[claim.Type];
             if (!string.IsNullOrWhiteSpace(mappedClaimType))
             {
                 output.Add(new Claim(mappedClaimType, claim.Value, claim.ValueType));

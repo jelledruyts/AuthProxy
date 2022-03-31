@@ -1,5 +1,6 @@
 using System.Net;
 using AuthProxy.Configuration;
+using AuthProxy.Infrastructure.IdentityProviders;
 using Microsoft.AspNetCore.Authentication;
 
 namespace AuthProxy.Infrastructure;
@@ -15,6 +16,13 @@ public static class ExtensionMethods
                 new OpenIdConnectHandler(identityProvider, options, loginCallbackPath);
             });
         }
+        else if (identityProvider.Type == IdentityProviderType.AzureAD)
+        {
+            authenticationBuilder.AddOpenIdConnect(authenticationScheme, options =>
+            {
+                new AzureADHandler(identityProvider, options, loginCallbackPath);
+            });
+        }
         // else if (authProxyConfig.Authentication.IdentityProvider.Type == IdentityProviderType.JwtBearer)
         // {
         //     authenticationBuilder.AddJwtBearer(options =>
@@ -24,6 +32,10 @@ public static class ExtensionMethods
         //         options.Authority = authProxyConfig.Authentication.IdentityProvider.Authority;
         //     });
         // }
+        else
+        {
+            throw new ArgumentOutOfRangeException(nameof(identityProvider.Type), $"Unknown {nameof(IdentityProviderType)}: \"{identityProvider.Type.ToString()}\".");
+        }
     }
 
     public static void MapIdentityProviderLogin(this IEndpointRouteBuilder endpoints, string authenticationScheme, string loginPath)

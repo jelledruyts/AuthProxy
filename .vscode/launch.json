@@ -32,7 +32,7 @@
             "stopAtEntry": false,
             "env": {
                 "ASPNETCORE_ENVIRONMENT": "Development",
-                "ALL_PROXY": "http://localhost:5273"
+                "DISABLED_ALL_PROXY": "http://localhost:5273"
             },
             "sourceFileMap": {
                 "/Views": "${workspaceFolder}/Views"
