@@ -5,6 +5,15 @@ namespace AuthProxy.Infrastructure.IdentityProviders;
 
 public class OpenIdConnectHandler
 {
+    private static readonly string[] defaultClaimTransformations = {
+        // "iss = ", // Don't map the issuer, the backend app can be reached through multiple IdPs and it shouldn't care which one was used.
+        // "azp = ", // Don't map the authorized party, the backend app can be reached through multiple clients and it shouldn't care which one was used.
+        // "aud = " , // Don't map the audience, the backend app can be reached through multiple IdPs/audiences and it shouldn't care which one was used.
+        "sub = sub + '@' + iss", // Don't map the subject directly as it's unique within the IdP only, concatenate it with the issuer claim to avoid conflicts between different users with the same subject across IdPs.
+        "acr", // Map the Authentication Context Class Reference to itself (shorthand syntax).
+        "amr" // Map the Authentication Methods References to itself (shorthand syntax).
+    };
+
     public OpenIdConnectHandler(IdentityProviderConfig identityProvider, OpenIdConnectOptions options, string loginCallbackPath)
     {
         // Set main options.
@@ -32,22 +41,8 @@ public class OpenIdConnectHandler
 
     protected virtual ClaimsTransformer GetClaimsTransformer(IdentityProviderConfig identityProvider)
     {
-        // TODO: (Re)use constants for claim types.
-        var configuredClaimTransformations = identityProvider.ClaimTransformations.ParseKeyValuePairs(true);
-        var defaultClaimTransformations = new Dictionary<string, string>()
-        {
-            // For defined claims in the  ID token, see https://openid.net/specs/openid-connect-core-1_0.html#IDToken
-            { "iss", "" }, // Don't map the issuer, the backend app can be reached through multiple IdPs and it shouldn't care which one was used.
-            { "sub", "" }, // Don't map the subject as it's unique within the IdP only; the final subject claim will be concatenated with the issuer claim to avoid conflicts between different users with the same subject across IdPs.
-            { "aud", "" }, // Don't map the audience, the backend app can be reached through multiple IdPs/audiences and it shouldn't care which one was used.
-            { "acr", "acr" }, // Map the Authentication Context Class Reference.
-            { "amr", "amr" }, // Map the Authentication Methods References.
-            { "azp", "" } // Don't map the authorized party, the backend app can be reached through multiple clients and it shouldn't care which one was used.
-        };
-        defaultClaimTransformations.Merge(configuredClaimTransformations);
-        var outputSubjectClaimType = "sub"; // TODO: Make configurable? Becomes obsolete with expression syntax.
-        var inputSubjectClaimTypes = new[] { "sub", "iss" }; // TODO: Make configurable? Becomes obsolete with expression syntax.
-        return new ClaimsTransformer(identityProvider, defaultClaimTransformations, outputSubjectClaimType, inputSubjectClaimTypes);
+        var claimTransformations = defaultClaimTransformations.Concat(identityProvider.ClaimTransformations ?? Array.Empty<string>()).ToList();
+        return new ClaimsTransformer(identityProvider, claimTransformations);
     }
 
     protected virtual OpenIdConnectEvents GetEvents(IdentityProviderConfig identityProvider, ClaimsTransformer claimsTransformer)

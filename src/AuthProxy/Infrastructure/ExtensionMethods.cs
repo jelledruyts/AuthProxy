@@ -82,7 +82,7 @@ public static class ExtensionMethods
         {
             foreach (var keyValue in keyValuePairs.Where(p => p != null))
             {
-                var parts = keyValue!.Split('=', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                var parts = keyValue!.Split('=', StringSplitOptions.TrimEntries);
                 var key = parts[0];
                 if (parts.Length == 1 && allowShorthandForm)
                 {

@@ -1,42 +1,18 @@
 using System.Security.Claims;
+using System.Text;
 using AuthProxy.Configuration;
 
 namespace AuthProxy.Infrastructure;
 
-// TODO: Change claims transformations with expression syntax
-//   Inputs: claims (claim[roles]), configuration/metadata (config[idp.name]), constant strings (string['foo'])
-//   Functions: +, split, join
-// Examples:
-// - "roles=claim[http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname]" => returns all "surname" claim values with their original claim type
-// - "roles=claim[roles]" => returns all "roles" claim values with their original claim type
-//     Example: ( "roles": "read", "roles": "write" ) => ( "roles": "read", "roles": "write" )
-// - "roles=roles" => returns all "roles" claim values with their original claim type (shorter syntax to simplify "claim[<name>]")
-// - "roles" => returns all "roles" claim values with their original claim type (short hand syntax)
-// - "ver=string['1.0']" => returns a "ver" claim value with a constant string
-// - "ver='1.0'" => returns a "ver" claim value with a constant string (shorter syntax where quotes imply string[])
-// - "scp=split(scp, ' ')" => returns all "scp" claim values and for each value splits the string into multiple values
-//     Example: ( "scp": "a b c", "scp": "a d" ) => ( "scp: "a", "scp: "b", "scp: "c", "scp: "a", "scp: "d" )
-// - "roles=join(roles, ' ')" => returns one "roles" claim value with the concatenated values of all original "roles" claim values
-//     Example: ( "roles": "read", "roles": "write" ) => ( "roles": "read write" )
-// - "idp-name=idp[name]" => returns a claim with a configuration value of the identity provider which authenticated the user
-// - "sub=sub + '@' + iss" => returns claims with a concatenation of the "sub" and "iss" claim values (cartesian product of all input claim values)
-//     Example: ( "sub": "a", "sub": "b", "iss": "x", "iss": "y" ) => ( "sub": "a@x", "sub": "a@y", "sub": "b@x", "sub": "b@y" )
-// - "sub=join(sub, ' ') + '@' + join(iss, ' ')" => returns a single claims with a concatenation of the joined "sub" and "iss" claim values
-//     Example: ( "sub": "a", "sub": "b", "iss": "x", "iss": "y" ) => ( "sub": "a b@x y" )
 public class ClaimsTransformer
 {
     public IdentityProviderConfig IdentityProvider { get; }
-    public IDictionary<string, string> ClaimTransformations { get; set; }
-    private readonly string outputSubjectClaimType;
-    private readonly IEnumerable<string> inputSubjectClaimTypes;
-    public string SubjectClaimValueSeparator { get; set; } = Defaults.SubjectClaimValueSeparator;
+    public IList<string> ClaimTransformations { get; set; }
 
-    public ClaimsTransformer(IdentityProviderConfig identityProvider, IDictionary<string, string> claimTransformations, string outputSubjectClaimType, IEnumerable<string> inputSubjectClaimTypes)
+    public ClaimsTransformer(IdentityProviderConfig identityProvider, IList<string> claimTransformations)
     {
         this.IdentityProvider = identityProvider;
         this.ClaimTransformations = claimTransformations;
-        this.outputSubjectClaimType = outputSubjectClaimType;
-        this.inputSubjectClaimTypes = inputSubjectClaimTypes;
     }
 
     public async Task<ClaimsPrincipal?> TransformAsync(ClaimsPrincipal? principal)
@@ -56,20 +32,70 @@ public class ClaimsTransformer
     {
         var output = new List<Claim>();
 
-        // Return (only) the mapped claims.
-        foreach (var claim in claims.Where(c => !string.IsNullOrWhiteSpace(c.Type) && this.ClaimTransformations.ContainsKey(c.Type)))
+        var parsedClaimTransformations = this.ClaimTransformations.ParseKeyValuePairs(true);
+
+        foreach (var claimTransformation in parsedClaimTransformations)
         {
-            var mappedClaimType = this.ClaimTransformations[claim.Type];
-            if (!string.IsNullOrWhiteSpace(mappedClaimType))
+            if (!string.IsNullOrWhiteSpace(claimTransformation.Value))
             {
-                output.Add(new Claim(mappedClaimType, claim.Value, claim.ValueType));
+                foreach (var claimValue in TransformExpression(claimTransformation.Value, claims))
+                {
+                    if (!string.IsNullOrWhiteSpace(claimValue))
+                    {
+                        output.Add(new Claim(claimTransformation.Key, claimValue));
+                    }
+                }
             }
         }
 
-        // Add a specific claim for the "subject".
-        var inputSubjectClaims = this.inputSubjectClaimTypes.SelectMany(inputSubjectClaimType => claims.Where(c => c.Type == inputSubjectClaimType).Select(c => c.Value));
-        output.Add(new Claim(this.outputSubjectClaimType, string.Join(this.SubjectClaimValueSeparator, inputSubjectClaims)));
-
         return Task.FromResult<IEnumerable<Claim>>(output);
+    }
+
+    public static IEnumerable<string> TransformExpression(string expression, IEnumerable<Claim> claims)
+    {
+        var transformedClaimValues = new List<StringBuilder>();
+        // Support a simple concatenation expression with + signs and either a claim name or a static string (in single quotes).
+        // For example: "'---' + claim1 + claim2 + '.' + claim3 + '---'".
+        transformedClaimValues.Add(new StringBuilder());
+        foreach (var part in expression.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (part.StartsWith('\''))
+            {
+                if (!part.EndsWith('\''))
+                {
+                    throw new ArgumentException($"Expression is not well-formed: \"{expression}\".");
+                }
+                // A constant string - append it to the output of all transformed claim values.
+                foreach (var transformedClaimValue in transformedClaimValues)
+                {
+                    transformedClaimValue.Append(part.Substring(1, part.Length - 2));
+                }
+            }
+            else
+            {
+                // A claim name - append the claim value(s).
+                var claimValues = claims.Where(c => c.Type == part && !string.IsNullOrWhiteSpace(c.Value)).Select(c => c.Value).ToArray();
+                if (claimValues.Any())
+                {
+                    if (claimValues.Length > 1)
+                    {
+                        // If there are multiple values for this claim type, add additional transformed claim values to the output.
+                        var existingTransformedClaimValues = transformedClaimValues.Select(t => t.ToString()).ToArray();
+                        for (var i = 0; i < claimValues.Length - 1; i++)
+                        {
+                            foreach (var existingTransformedClaimValue in existingTransformedClaimValues)
+                            {
+                                transformedClaimValues.Add(new StringBuilder(existingTransformedClaimValue));
+                            }
+                        }
+                    }
+                    for (var i = 0; i < transformedClaimValues.Count; i++)
+                    {
+                        transformedClaimValues[i].Append(claimValues[i / (transformedClaimValues.Count / claimValues.Length)]);
+                    }
+                }
+            }
+        }
+        return transformedClaimValues.Select(s => s.ToString());
     }
 }

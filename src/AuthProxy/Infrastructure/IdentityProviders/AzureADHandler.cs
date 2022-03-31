@@ -18,11 +18,11 @@ public class AzureADHandler : OpenIdConnectHandler
 
     protected override ClaimsTransformer GetClaimsTransformer(IdentityProviderConfig identityProvider)
     {
-        var transformer = base.GetClaimsTransformer(identityProvider);
         // Override IdP-specific claims transformations to include useful claims by default and to make other ones more meaningful.
-        transformer.ClaimTransformations.Add("preferred_username", "name");
-        transformer.ClaimTransformations.Add("roles", "roles");
-        transformer.ClaimTransformations.Add("email", "email");
+        var transformer = base.GetClaimsTransformer(identityProvider);
+        transformer.ClaimTransformations.Add("name=preferred_username");
+        transformer.ClaimTransformations.Add("roles");
+        transformer.ClaimTransformations.Add("email");
         return transformer;
     }
 }
