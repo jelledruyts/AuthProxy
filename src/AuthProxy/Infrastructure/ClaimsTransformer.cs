@@ -17,15 +17,29 @@ public class ClaimsTransformer
 
     public async Task<ClaimsPrincipal?> TransformAsync(ClaimsPrincipal? principal)
     {
-        // Transform the incoming claims and create a new claims principal.
-        var identity = principal?.Identity as ClaimsIdentity;
-        if (identity != null)
+        var identities = new List<ClaimsIdentity>(3);
+        // Add a local identity with additional metadata about the authentication for future reference (internal to the proxy only).
+        var localIdentity = new ClaimsIdentity(new[]{
+            new Claim(Constants.ClaimTypes.Metadata.IdentityProviderName, this.IdentityProvider.Name!),
+            new Claim(Constants.ClaimTypes.Metadata.IdentityProviderType, this.IdentityProvider.Type.ToString())
+        }, Constants.AuthenticationTypes.Metadata);
+        identities.Add(localIdentity);
+
+        var federatedIdentity = principal?.Identity as ClaimsIdentity;
+        if (federatedIdentity != null)
         {
-            var transformedClaims = await TransformAsync(identity.Claims);
-            var transformedIdentity = new ClaimsIdentity(transformedClaims, identity.AuthenticationType);
-            principal = new ClaimsPrincipal(transformedIdentity);
+            // Add the original identity for future reference (internal to the proxy only).
+            identities.Add(federatedIdentity);
+
+            // Transform the incoming claims (to be sent to the backend app).
+            var transformedClaims = await TransformAsync(federatedIdentity.Claims);
+            var transformedIdentity = new ClaimsIdentity(transformedClaims, Constants.AuthenticationTypes.BackendApp);
+            identities.Add(transformedIdentity);
         }
-        return principal;
+        // Create a new claims principal containing an identity holding the original claims from the IdP,
+        // an identity holding the transformed claims for the backend app, and a local identity with additional
+        // metadata about the authentication.
+        return new ClaimsPrincipal(identities);
     }
 
     public Task<IEnumerable<Claim>> TransformAsync(IEnumerable<Claim> claims)

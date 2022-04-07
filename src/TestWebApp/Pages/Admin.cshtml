@@ -1,0 +1,8 @@
+@page
+@{
+    ViewData["Title"] = "Admin";
+}
+
+<h2>Admins Only Here</h2>
+
+<p>You (@User.Identity!.Name) should only be allowed to see this if you are authenticated with the identity provider for admins.</p>

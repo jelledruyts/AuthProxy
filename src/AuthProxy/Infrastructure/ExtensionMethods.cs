@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Claims;
 using AuthProxy.Configuration;
 using AuthProxy.Infrastructure.IdentityProviders;
 using Microsoft.AspNetCore.Authentication;
@@ -105,5 +106,10 @@ public static class ExtensionMethods
     public static void Merge(this IDictionary<string, string> target, IDictionary<string, string> source)
     {
         source.ToList().ForEach(x => target[x.Key] = x.Value);
+    }
+
+    public static ClaimsIdentity? GetIdentity(this ClaimsPrincipal principal, string authenticationType)
+    {
+        return principal.Identities.SingleOrDefault(i => i.AuthenticationType == authenticationType);
     }
 }
