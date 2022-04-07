@@ -50,19 +50,21 @@ var app = builder.Build();
 app.UseAuthentication();
 
 // Map login paths for identity providers.
+var postLoginReturnUrlQueryParameterName = Defaults.PostLoginReturnUrlQueryParameterName; // TODO: Make configurable.
 if (defaultIdentityProvider != null)
 {
     // Map a login path for the default IdP (e.g. "/.auth/login").
-    app.MapIdentityProviderLogin(authProxyConfig.Authentication.GetDefaultAuthenticationScheme(), authProxyConfig.Authentication.GetDefaultLoginPath());
+    app.MapIdentityProviderLogin(authProxyConfig.Authentication.GetDefaultAuthenticationScheme(), authProxyConfig.Authentication.GetDefaultLoginPath(), postLoginReturnUrlQueryParameterName);
 }
 foreach (var identityProvider in authProxyConfig.Authentication.IdentityProviders)
 {
     // Map a login path per IdP (e.g. "/.auth/login/<provider-name>").
-    app.MapIdentityProviderLogin(authProxyConfig.Authentication.GetAuthenticationScheme(identityProvider), authProxyConfig.Authentication.GetLoginPath(identityProvider));
+    app.MapIdentityProviderLogin(authProxyConfig.Authentication.GetAuthenticationScheme(identityProvider), authProxyConfig.Authentication.GetLoginPath(identityProvider), postLoginReturnUrlQueryParameterName);
 }
 
 // Map a global logout path.
-app.MapLogout(authProxyConfig.Authentication.GetLogoutPath());
+var postLogoutReturnUrlQueryParameterName = Defaults.PostLogoutReturnUrlQueryParameterName; // TODO: Make configurable.
+app.MapLogout(authProxyConfig.Authentication.GetLogoutPath(), postLogoutReturnUrlQueryParameterName);
 
 // Map everything else to YARP.
 var handler = app.Services.GetRequiredService<YarpRequestHandler>();

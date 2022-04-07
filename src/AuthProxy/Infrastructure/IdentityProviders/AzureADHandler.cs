@@ -3,6 +3,10 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 
 namespace AuthProxy.Infrastructure.IdentityProviders;
 
+// TODO: The "login_hint" claim (if present) of the current principal's "original" (federated) identity
+// can be used as the "logout_hint" when a logout is requested towards the IdP.
+// See https://docs.microsoft.com/azure/active-directory/develop/v2-protocols-oidc#send-a-sign-out-request.
+
 public class AzureADHandler : OpenIdConnectHandler
 {
     public AzureADHandler(IdentityProviderConfig identityProvider, OpenIdConnectOptions options, string loginCallbackPath)

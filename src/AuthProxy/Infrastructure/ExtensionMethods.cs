@@ -39,13 +39,16 @@ public static class ExtensionMethods
         }
     }
 
-    public static void MapIdentityProviderLogin(this IEndpointRouteBuilder endpoints, string authenticationScheme, string loginPath)
+    public static void MapIdentityProviderLogin(this IEndpointRouteBuilder endpoints, string authenticationScheme, string loginPath, string postLoginReturnUrlQueryParameterName)
     {
         // TODO: Log the path being mapped.
         endpoints.Map(loginPath, async httpContext =>
         {
-            // TODO: Capture and process "return URL" from "post_login_redirect_uri" (or configurable query parameter).
             var returnUrl = "/";
+            if (httpContext.Request.Query.TryGetValue(postLoginReturnUrlQueryParameterName, out var postLoginReturnUrlValue))
+            {
+                returnUrl = postLoginReturnUrlValue.First();
+            }
             if (httpContext.User.Identity?.IsAuthenticated != true)
             {
                 // The user isn't logged in, redirect to the identity provider and capture the return URL.
@@ -60,12 +63,15 @@ public static class ExtensionMethods
         });
     }
 
-    public static void MapLogout(this IEndpointRouteBuilder endpoints, string logoutPath)
+    public static void MapLogout(this IEndpointRouteBuilder endpoints, string logoutPath, string postLogoutReturnUrlQueryParameterName)
     {
         endpoints.Map(logoutPath, async httpContext =>
         {
-            // TODO: Capture and process "return URL" from "post_logout_redirect_uri" (or configurable query parameter).
             var returnUrl = "/";
+            if (httpContext.Request.Query.TryGetValue(postLogoutReturnUrlQueryParameterName, out var postLogoutReturnUrlValue))
+            {
+                returnUrl = postLogoutReturnUrlValue.First();
+            }
             if (httpContext.User.Identity?.IsAuthenticated == true)
             {
                 // TODO: If configured, also trigger Single Sign-Out across all authenticated IdPs.
