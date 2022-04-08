@@ -33,6 +33,7 @@ public class OpenIdConnectHandler
 
         // Set token validation parameters.
         options.TokenValidationParameters.ValidAudiences = identityProvider.AllowedAudiences;
+        // TODO: Warn if there are no valid audiences configured.
 
         // Handle events.
         var claimsTransformer = GetClaimsTransformer(identityProvider);

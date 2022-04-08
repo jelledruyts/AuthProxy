@@ -17,10 +17,11 @@ public class ClaimsTransformer
 
     public async Task<ClaimsPrincipal?> TransformAsync(ClaimsPrincipal? principal)
     {
+        ArgumentNullException.ThrowIfNull(this.IdentityProvider.Name);
         var identities = new List<ClaimsIdentity>(3);
         // Add a local identity with additional metadata about the authentication for future reference (internal to the proxy only).
         var localIdentity = new ClaimsIdentity(new[]{
-            new Claim(Constants.ClaimTypes.Metadata.IdentityProviderName, this.IdentityProvider.Name!),
+            new Claim(Constants.ClaimTypes.Metadata.IdentityProviderName, this.IdentityProvider.Name),
             new Claim(Constants.ClaimTypes.Metadata.IdentityProviderType, this.IdentityProvider.Type.ToString())
         }, Constants.AuthenticationTypes.Metadata);
         identities.Add(localIdentity);

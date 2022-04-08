@@ -19,11 +19,21 @@ public class YarpRequestHandler
 
     public YarpRequestHandler(ILogger<YarpRequestHandler> logger, IHttpForwarder forwarder, AuthProxyConfig authProxyConfig)
     {
+        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication);
+        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.TokenIssuer);
+        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.TokenIssuer.Audience);
+        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.TokenIssuer.Issuer);
+        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.TokenIssuer.Expiration);
+        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.TokenIssuer.SigningSecret);
+        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.Cookie);
+        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.Cookie.Name);
+        ArgumentNullException.ThrowIfNull(authProxyConfig.Backend);
+        ArgumentNullException.ThrowIfNull(authProxyConfig.Backend.Url);
         this.logger = logger;
         this.forwarder = forwarder;
         this.defaultTransformer = HttpTransformer.Default;
-        var tokenIssuer = new TokenIssuer(authProxyConfig.Authentication!.TokenIssuer!.Audience!, authProxyConfig.Authentication!.TokenIssuer!.Issuer!, authProxyConfig.Authentication!.TokenIssuer!.Expiration!.Value, authProxyConfig.Authentication!.TokenIssuer!.SigningSecret!);
-        this.customTransformer = new YarpHttpTransformer(authProxyConfig.Authentication!.Cookie!.Name!, tokenIssuer);
+        var tokenIssuer = new TokenIssuer(authProxyConfig.Authentication.TokenIssuer.Audience, authProxyConfig.Authentication.TokenIssuer.Issuer, authProxyConfig.Authentication.TokenIssuer.Expiration.Value, authProxyConfig.Authentication.TokenIssuer.SigningSecret);
+        this.customTransformer = new YarpHttpTransformer(authProxyConfig.Authentication.Cookie.Name, tokenIssuer);
         this.requestOptions = new ForwarderRequestConfig { ActivityTimeout = TimeSpan.FromSeconds(100) };
         this.httpClient = new HttpMessageInvoker(new SocketsHttpHandler()
         {
@@ -33,8 +43,8 @@ public class YarpRequestHandler
             UseCookies = false,
             ActivityHeadersPropagator = new ReverseProxyPropagator(DistributedContextPropagator.Current)
         });
-        this.backendAppUrl = authProxyConfig.Backend!.Url!;
-        this.inboundPolicies = authProxyConfig.Policies!.Inbound ?? Array.Empty<InboundPolicyConfig>();
+        this.backendAppUrl = authProxyConfig.Backend.Url;
+        this.inboundPolicies = authProxyConfig.Policies?.Inbound ?? Array.Empty<InboundPolicyConfig>();
     }
 
     public async Task HandleRequest(HttpContext httpContext)

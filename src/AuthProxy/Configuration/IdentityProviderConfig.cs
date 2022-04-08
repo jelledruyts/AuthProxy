@@ -14,12 +14,4 @@ public class IdentityProviderConfig
     public string[]? AdditionalParametersForLogout { get; set; }
     public string? LoginPath { get; set; }
     public string? LoginCallbackPath { get; set; }
-
-    public void Validate()
-    {
-        ArgumentNullException.ThrowIfNull(this.Name);
-        // TODO: Check that Name is acceptable in URL and does not conflict with default authentication scheme (Defaults.AuthenticationScheme).
-        // TODO: Warn if there are no valid audiences configured.
-        // TODO: Complete validation.
-    }
 }

@@ -9,9 +9,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Retrieve configuration.
 var authProxyConfig = new AuthProxyConfig();
 builder.Configuration.Bind("AuthProxy", authProxyConfig);
-authProxyConfig.Validate(); // TODO: Validate upon actual usage (at startup, not at runtime) rather than without context upfront here?
 builder.Services.AddSingleton<AuthProxyConfig>(authProxyConfig);
-ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication?.IdentityProviders);
+ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication);
+ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.IdentityProviders);
+ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.Cookie);
 var defaultIdentityProvider = authProxyConfig.Authentication.DefaultIdentityProvider;
 
 // Add YARP services.
@@ -27,7 +28,7 @@ authenticationBuilder.AddCookie(options =>
 {
     // TODO: Also rename other cookies (.AspNetCore.* for correlation and nonce for example)
     // TODO: External key for cookie and other crypto operations?
-    options.Cookie.Name = authProxyConfig.Authentication.Cookie!.Name;
+    options.Cookie.Name = authProxyConfig.Authentication.Cookie.Name;
 });
 
 // Add all identity providers as authentication services.
@@ -41,7 +42,10 @@ if (defaultIdentityProvider != null)
 }
 foreach (var identityProvider in authProxyConfig.Authentication.IdentityProviders)
 {
-    authenticationBuilder.AddIdentityProvider(identityProvider, authProxyConfig.Authentication.GetAuthenticationScheme(identityProvider), authProxyConfig.Authentication.GetLoginCallbackPath(identityProvider));
+    ArgumentNullException.ThrowIfNull(identityProvider.Name);
+    // TODO: Ensure IdentityProvider's Name is acceptable in URLs, unique across other IdPs and does not conflict with the default authentication scheme (Defaults.AuthenticationScheme)
+    // TODO: Ensure IdentityProvider's callback paths are unique across all configured IdPs and don't conflict with the default paths.
+    authenticationBuilder.AddIdentityProvider(identityProvider, identityProvider.Name, authProxyConfig.Authentication.GetLoginCallbackPath(identityProvider));
 }
 
 var app = builder.Build();
@@ -59,7 +63,8 @@ if (defaultIdentityProvider != null)
 foreach (var identityProvider in authProxyConfig.Authentication.IdentityProviders)
 {
     // Map a login path per IdP (e.g. "/.auth/login/<provider-name>").
-    app.MapIdentityProviderLogin(authProxyConfig.Authentication.GetAuthenticationScheme(identityProvider), authProxyConfig.Authentication.GetLoginPath(identityProvider), postLoginReturnUrlQueryParameterName);
+    ArgumentNullException.ThrowIfNull(identityProvider.Name);
+    app.MapIdentityProviderLogin(identityProvider.Name, authProxyConfig.Authentication.GetLoginPath(identityProvider), postLoginReturnUrlQueryParameterName);
 }
 
 // Map a global logout path.

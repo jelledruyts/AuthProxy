@@ -87,22 +87,25 @@ public static class ExtensionMethods
         var result = new Dictionary<string, string>();
         if (keyValuePairs != null)
         {
-            foreach (var keyValue in keyValuePairs.Where(p => p != null))
+            foreach (var keyValue in keyValuePairs)
             {
-                var parts = keyValue!.Split('=', StringSplitOptions.TrimEntries);
-                var key = parts[0];
-                if (parts.Length == 1 && allowShorthandForm)
+                if (keyValue != null)
                 {
-                    // The value "<key>" is short hand syntax for "<key>=<key>".
-                    result[key] = key;
-                }
-                else if (parts.Length != 2)
-                {
-                    throw new ArgumentException($"Could not parse key/value pair: \"keyValue\".", nameof(keyValuePairs));
-                }
-                else
-                {
-                    result[key] = parts[1];
+                    var parts = keyValue.Split('=', StringSplitOptions.TrimEntries);
+                    var key = parts[0];
+                    if (parts.Length == 1 && allowShorthandForm)
+                    {
+                        // The value "<key>" is short hand syntax for "<key>=<key>".
+                        result[key] = key;
+                    }
+                    else if (parts.Length != 2)
+                    {
+                        throw new ArgumentException($"Could not parse key/value pair: \"keyValue\".", nameof(keyValuePairs));
+                    }
+                    else
+                    {
+                        result[key] = parts[1];
+                    }
                 }
             }
         }
