@@ -8,14 +8,14 @@ namespace AuthProxy.Infrastructure;
 
 public class YarpHttpTransformer : HttpTransformer
 {
-    private readonly string authProxyCookiePrefix;
+    private readonly string authProxyCookieName;
     private const string CookieSeparator = "; ";
     private const string CookieHeaderName = "Cookie";
     private readonly TokenIssuer tokenIssuer;
 
     public YarpHttpTransformer(string authProxyCookieName, TokenIssuer tokenIssuer)
     {
-        this.authProxyCookiePrefix = authProxyCookieName + "=";
+        this.authProxyCookieName = authProxyCookieName;
         this.tokenIssuer = tokenIssuer;
     }
 
@@ -44,7 +44,7 @@ public class YarpHttpTransformer : HttpTransformer
             {
                 foreach (var cookie in cookieHeader.Split(CookieSeparator))
                 {
-                    if (!cookie.StartsWith(this.authProxyCookiePrefix))
+                    if (!cookie.StartsWith(this.authProxyCookieName))
                     {
                         if (newCookieHeader.Length > 0)
                         {
