@@ -29,6 +29,15 @@ authenticationBuilder.AddCookie(options =>
     // TODO: Also rename other cookies (.AspNetCore.* for correlation and nonce for example)
     // TODO: External key for cookie and other crypto operations?
     options.Cookie.Name = authProxyConfig.Authentication.Cookie.Name;
+    options.Events = new CookieAuthenticationEvents
+    {
+        OnSigningIn = (context) =>
+        {
+            // Create a persistent browser cookie if configured.
+            context.Properties.IsPersistent = authProxyConfig.Authentication.Cookie.IsPersistent;
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // Add all identity providers as authentication services.

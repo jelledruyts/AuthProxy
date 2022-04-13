@@ -43,6 +43,5 @@ public class OpenIdConnectHandlerEvents : OpenIdConnectEvents
     {
         // Invoked when an IdToken has been validated and produced an AuthenticationTicket.
         context.Principal = await this.claimsTransformer.TransformAsync(context.Principal);
-        //context.Properties.IsPersistent = true; // Optionally ensure the session cookie is persistent across browser sessions.
     }
 }
