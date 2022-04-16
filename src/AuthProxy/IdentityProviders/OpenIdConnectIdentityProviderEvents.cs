@@ -1,21 +1,21 @@
-using AuthProxy.Configuration;
+using AuthProxy.Infrastructure;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 
-namespace AuthProxy.Infrastructure.IdentityProviders;
+namespace AuthProxy.IdentityProviders;
 
-public class OpenIdConnectHandlerEvents : OpenIdConnectEvents
+public class OpenIdConnectIdentityProviderEvents : OpenIdConnectEvents
 {
-    private readonly IdentityProviderConfig identityProvider;
+    private readonly IdentityProvider identityProvider;
     private readonly ClaimsTransformer claimsTransformer;
     private readonly IDictionary<string, string> additionalParameters;
     private readonly IDictionary<string, string> additionalParametersForLogout;
 
-    public OpenIdConnectHandlerEvents(IdentityProviderConfig identityProvider, ClaimsTransformer claimsTransformer)
+    public OpenIdConnectIdentityProviderEvents(IdentityProvider identityProvider, ClaimsTransformer claimsTransformer)
     {
         this.identityProvider = identityProvider;
         this.claimsTransformer = claimsTransformer;
-        this.additionalParameters = this.identityProvider.AdditionalParameters.ParseKeyValuePairs(false);
-        this.additionalParametersForLogout = this.identityProvider.AdditionalParametersForLogout.ParseKeyValuePairs(false);
+        this.additionalParameters = this.identityProvider.Configuration.AdditionalParameters.ParseKeyValuePairs(false);
+        this.additionalParametersForLogout = this.identityProvider.Configuration.AdditionalParametersForLogout.ParseKeyValuePairs(false);
     }
 
     public override Task RedirectToIdentityProvider(RedirectContext context)

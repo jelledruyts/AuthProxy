@@ -1,15 +1,15 @@
 using System.Security.Claims;
 using System.Text;
-using AuthProxy.Configuration;
+using AuthProxy.IdentityProviders;
 
 namespace AuthProxy.Infrastructure;
 
 public class ClaimsTransformer
 {
-    public IdentityProviderConfig IdentityProvider { get; }
+    public IdentityProvider IdentityProvider { get; }
     public IList<string> ClaimTransformations { get; set; }
 
-    public ClaimsTransformer(IdentityProviderConfig identityProvider, IList<string> claimTransformations)
+    public ClaimsTransformer(IdentityProvider identityProvider, IList<string> claimTransformations)
     {
         this.IdentityProvider = identityProvider;
         this.ClaimTransformations = claimTransformations;
@@ -17,12 +17,12 @@ public class ClaimsTransformer
 
     public async Task<ClaimsPrincipal?> TransformAsync(ClaimsPrincipal? principal)
     {
-        ArgumentNullException.ThrowIfNull(this.IdentityProvider.Name);
+        ArgumentNullException.ThrowIfNull(this.IdentityProvider.Configuration.Name);
         var identities = new List<ClaimsIdentity>(3);
         // Add a local identity with additional metadata about the authentication for future reference (internal to the proxy only).
         var localIdentity = new ClaimsIdentity(new[]{
-            new Claim(Constants.ClaimTypes.Metadata.IdentityProviderName, this.IdentityProvider.Name),
-            new Claim(Constants.ClaimTypes.Metadata.IdentityProviderType, this.IdentityProvider.Type.ToString())
+            new Claim(Constants.ClaimTypes.Metadata.IdentityProviderName, this.IdentityProvider.Configuration.Name),
+            new Claim(Constants.ClaimTypes.Metadata.IdentityProviderType, this.IdentityProvider.Configuration.Type.ToString())
         }, Constants.AuthenticationTypes.Metadata);
         identities.Add(localIdentity);
 
