@@ -15,7 +15,7 @@ public class ClaimsTransformer
         this.ClaimTransformations = claimTransformations;
     }
 
-    public async Task<ClaimsPrincipal?> TransformAsync(ClaimsPrincipal? principal)
+    public async Task<ClaimsPrincipal?> TransformPrincipalAsync(ClaimsPrincipal? principal)
     {
         ArgumentNullException.ThrowIfNull(this.IdentityProvider.Configuration.Name);
         var identities = new List<ClaimsIdentity>(3);
@@ -33,7 +33,7 @@ public class ClaimsTransformer
             identities.Add(federatedIdentity);
 
             // Transform the incoming claims (to be sent to the backend app).
-            var transformedClaims = await TransformAsync(federatedIdentity.Claims);
+            var transformedClaims = await TransformClaimsAsync(federatedIdentity.Claims);
             var transformedIdentity = new ClaimsIdentity(transformedClaims, Constants.AuthenticationTypes.BackendApp);
             identities.Add(transformedIdentity);
         }
@@ -43,7 +43,7 @@ public class ClaimsTransformer
         return new ClaimsPrincipal(identities);
     }
 
-    public Task<IEnumerable<Claim>> TransformAsync(IEnumerable<Claim> claims)
+    private Task<IEnumerable<Claim>> TransformClaimsAsync(IEnumerable<Claim> claims)
     {
         var output = new List<Claim>();
 
@@ -66,7 +66,7 @@ public class ClaimsTransformer
         return Task.FromResult<IEnumerable<Claim>>(output);
     }
 
-    public static IEnumerable<string> TransformExpression(string expression, IEnumerable<Claim> claims)
+    private static IEnumerable<string> TransformExpression(string expression, IEnumerable<Claim> claims)
     {
         var transformedClaimValues = new List<StringBuilder>();
         // Support a simple concatenation expression with + signs and either a claim name or a static string (in single quotes).

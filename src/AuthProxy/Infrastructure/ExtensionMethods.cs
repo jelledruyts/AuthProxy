@@ -43,4 +43,15 @@ public static class ExtensionMethods
     {
         return principal.Identities.SingleOrDefault(i => i.AuthenticationType == authenticationType);
     }
+
+    public static ClaimsIdentity GetOrCreateIdentity(this ClaimsPrincipal principal, string authenticationType)
+    {
+        var identity = principal.GetIdentity(authenticationType);
+        if (identity == null)
+        {
+            identity = new ClaimsIdentity(Array.Empty<Claim>(), authenticationType);
+            principal.AddIdentity(identity);
+        }
+        return identity;
+    }
 }

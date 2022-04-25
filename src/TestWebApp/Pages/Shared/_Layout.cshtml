@@ -20,38 +20,36 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        <li class="nav-item">
-                            <a class="nav-link" href="~/.auth/login">Login (Default)</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownLogin" role="button" data-bs-toggle="dropdown" aria-expanded="false">Login</a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdownLogin">
+                                <li><a class="dropdown-item" href="~/.auth/login">Login (Default)</a></li>
+                                <li><a class="dropdown-item" href="~/.auth/login/aad">Login (AAD)</a></li>
+                                <li><a class="dropdown-item" href="~/.auth/login/b2c">Login (B2C)</a></li>
+                                <li><a class="dropdown-item" href="~/.auth/login/auth0">Login (Auth0)</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownLogout" role="button" data-bs-toggle="dropdown" aria-expanded="false">Logout</a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdownLogout">
+                                <li><a class="dropdown-item" href="~/.auth/logout">Logout</a></li>
+                                <li><a class="dropdown-item" asp-page="/Logout">Logout (Header)</a></li>
+                            </ul>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="~/.auth/login/aad">Login (AAD)</a>
+                            <a class="nav-link" asp-page="/Account" title="This page should always ensure you are logged in.">Account</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="~/.auth/login/b2c">Login (B2C)</a>
+                            <a class="nav-link" asp-page="/Admin" title="This page should only be accessible if you are authenticated with the identity provider for admins.">Admin</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="~/.auth/login/auth0">Login (Auth0)</a>
+                            <a class="nav-link" asp-page="/Consumer" title="This page should only be accessible if you are authenticated with the identity provider for consumers.">Consumer</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="~/.auth/logout">Logout</a>
+                            <a class="nav-link" asp-page="/Privacy" title="This page should always be accessible.">Privacy</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" asp-page="/Logout">Logout (Header)</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Account">Account</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Admin">Admin</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Consumer">Consumer</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Privacy">Privacy</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="~/secret">Secret</a>
+                            <a class="nav-link" href="~/secret" title="Attempting to access this link should always result in an access denied error.">Secret</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" asp-page="/CallApi">Call API</a>

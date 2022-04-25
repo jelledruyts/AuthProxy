@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Yarp.ReverseProxy.Forwarder;
@@ -9,8 +10,6 @@ namespace AuthProxy.Infrastructure;
 public class YarpHttpTransformer : HttpTransformer
 {
     private readonly string authProxyCookieName;
-    private const string CookieSeparator = "; ";
-    private const string CookieHeaderName = "Cookie";
     private readonly TokenIssuer tokenIssuer;
 
     public YarpHttpTransformer(string authProxyCookieName, TokenIssuer tokenIssuer)
@@ -35,49 +34,30 @@ public class YarpHttpTransformer : HttpTransformer
         await HttpTransformer.Default.TransformRequestAsync(httpContext, proxyRequest, destinationPrefix);
 
         // Remove auth cookie in the request towards the app as it's internal to the proxy.
-        // TODO: Add defensive coding to protect against maliciously formed cookie headers.
-        // https://datatracker.ietf.org/doc/html/rfc6265#section-5.4
-        if (proxyRequest.Headers.Contains(CookieHeaderName))
-        {
-            var newCookieHeader = new StringBuilder();
-            foreach (var cookieHeader in proxyRequest.Headers.GetValues(CookieHeaderName))
-            {
-                foreach (var cookie in cookieHeader.Split(CookieSeparator))
-                {
-                    if (!cookie.StartsWith(this.authProxyCookieName))
-                    {
-                        if (newCookieHeader.Length > 0)
-                        {
-                            newCookieHeader.Append(CookieSeparator);
-                        }
-                        newCookieHeader.Append(cookie);
-                    }
-                }
-            }
-            proxyRequest.Headers.Remove(CookieHeaderName);
-            if (newCookieHeader.Length > 0)
-            {
-                proxyRequest.Headers.Add(CookieHeaderName, newCookieHeader.ToString());
-            }
-        }
+        RemoveCookie(proxyRequest, this.authProxyCookieName);
 
         if (httpContext.User.Identity?.IsAuthenticated == true)
         {
-            // TODO: Token should be cached rather than recreated for each request.
+            // TODO-L: Token should be cached rather than recreated for each request.
             var backendAppIdentity = httpContext.User.GetIdentity(Constants.AuthenticationTypes.BackendApp);
             if (backendAppIdentity != null)
             {
-                // TODO: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
-                // proxyRequest.Headers.Add("X-Auth-Token", customPrefix + backendAppToken + customSuffix);
+                // TODO-C: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
+                // For example: proxyRequest.Headers.Add("X-Auth-Token", customPrefix + backendAppToken + customSuffix);
                 var backendAppToken = this.tokenIssuer.CreateToken(backendAppIdentity.Claims);
                 proxyRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", backendAppToken);
             }
         }
-        proxyRequest.Headers.Add("X-Auth-Request", "OK");
 
-        // Suppress the original request header, use the one from the destination Uri.
-        // TODO: Make configurable.
-        proxyRequest.Headers.Host = null;
+        var roundTripIdentity = httpContext.User.GetOrCreateIdentity(Constants.AuthenticationTypes.RoundTrip);
+        // TODO-M: Encrypt the information rather than package it up in a (signed but readable) JWT.
+        // TODO-C: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
+        var roundTripToken = this.tokenIssuer.CreateToken(roundTripIdentity.Claims);
+        proxyRequest.Headers.Add("X-AuthProxy-API-token", roundTripToken);
+
+        // TODO-C: Make configurable.
+        proxyRequest.Headers.Host = httpContext.Request.Host.Value; // Use the original request header.
+        // proxyRequest.Headers.Host = null; // Suppress the original request header, use the one from the destination Uri.
     }
 
     /// <summary>
@@ -130,5 +110,43 @@ public class YarpHttpTransformer : HttpTransformer
     {
         // Perform default behavior.
         return HttpTransformer.Default.TransformResponseTrailersAsync(httpContext, proxyResponse);
+    }
+
+    private static void RemoveCookie(HttpRequestMessage proxyRequest, string cookieNamePrefix)
+    {
+        // TODO-L: Add defensive coding to protect against maliciously formed cookie headers.
+        // https://datatracker.ietf.org/doc/html/rfc6265#section-5.4
+        const string CookieHeaderName = "Cookie";
+        const string CookieSeparator = "; ";
+        if (proxyRequest.Headers.Contains(CookieHeaderName))
+        {
+            var newCookieHeader = new StringBuilder();
+            // Get all cookie headers.
+            foreach (var cookieHeader in proxyRequest.Headers.GetValues(CookieHeaderName))
+            {
+                // Split by the separator (as per specification).
+                foreach (var cookie in cookieHeader.Split(CookieSeparator))
+                {
+                    // Append the cookie if it's not the one we need to strip out.
+                    if (!cookie.StartsWith(cookieNamePrefix))
+                    {
+                        if (newCookieHeader.Length > 0)
+                        {
+                            newCookieHeader.Append(CookieSeparator);
+                        }
+                        newCookieHeader.Append(cookie);
+                    }
+                }
+            }
+
+            // Remove all cookie headers.
+            proxyRequest.Headers.Remove(CookieHeaderName);
+
+            // Add a new cookie header if there was any remaining cookie.
+            if (newCookieHeader.Length > 0)
+            {
+                proxyRequest.Headers.Add(CookieHeaderName, newCookieHeader.ToString());
+            }
+        }
     }
 }

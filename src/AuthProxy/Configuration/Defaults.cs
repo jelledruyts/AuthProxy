@@ -10,6 +10,9 @@ public static class Defaults
     public const string PostLogoutReturnUrlQueryParameterName = "returnUrl"; // NOTE: App Service EasyAuth uses "post_logout_redirect_uri".
     public const string AuthenticationCookieName = ".AuthProxy";
     public const bool AuthenticationCookieIsPersistent = false;
+    public const string TokenIssuerAudience = "AuthProxyBackendApp";
+    public const string TokenIssuerIssuer = "AuthProxy";
     public static readonly TimeSpan TokenIssuerExpiration = TimeSpan.FromHours(1);
-    public const string SubjectClaimValueSeparator = "@";
+    public const string ApiBasePath = ".auth/api";
+    public const bool AllowRefreshTokens = true;
 }

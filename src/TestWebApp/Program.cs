@@ -9,25 +9,33 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpClient();
 builder.Services.AddRazorPages()
     .AddRazorRuntimeCompilation();
+
 builder.Services.AddHttpLogging(options =>
 {
     options.LoggingFields = HttpLoggingFields.RequestPropertiesAndHeaders;
 });
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     // Ensure to disable the middleware that processes forwarded headers to see the real headers.
     // See https://docs.microsoft.com/aspnet/core/host-and-deploy/proxy-load-balancer.
     options.ForwardedHeaders = ForwardedHeaders.None;
+
+    // On the other hand, *if* the reverse proxy is configured to overwrite the host header,
+    // ensure the app "sees" the original request URL by inspecting the headers added by the reverse proxy.
+    // options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedProto;
 });
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // Don't map any standard OpenID Connect claims to Microsoft-specific claims.
+
+// Add authentication based on the incoming JWT issued by the reverse proxy.
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters.ValidIssuer = "AuthProxy";
         options.TokenValidationParameters.ValidAudience = "AuthProxyBackendApp";
         // Skip checking of the signature.
-        // TODO: Check against configured signing key of AuthProxy by having it expose OIDC metadata.
+        // TODO-M: Check against configured signing key of AuthProxy by having it expose OIDC metadata.
         options.TokenValidationParameters.SignatureValidator = (string token, TokenValidationParameters parameters) => new JwtSecurityToken(token);
 
         options.TokenValidationParameters.NameClaimType = "name";

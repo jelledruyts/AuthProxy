@@ -2,5 +2,5 @@ namespace AuthProxy.Configuration;
 
 public class PoliciesConfig
 {
-    public IList<InboundPolicyConfig>? Inbound { get; set; }
+    public IList<InboundPolicyConfig> Inbound { get; set; } = new List<InboundPolicyConfig>();
 }

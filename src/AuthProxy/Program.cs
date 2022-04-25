@@ -1,10 +1,13 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Text.Json.Serialization;
+using AuthProxy;
 using AuthProxy.Configuration;
 using AuthProxy.IdentityProviders;
 using AuthProxy.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.IdentityModel.Tokens;
 
 // Set up the web application and DI container.
 var builder = WebApplication.CreateBuilder(args);
@@ -12,8 +15,6 @@ var builder = WebApplication.CreateBuilder(args);
 // Retrieve configuration.
 var authProxyConfig = new AuthProxyConfig();
 builder.Configuration.Bind("AuthProxy", authProxyConfig);
-ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication);
-ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.Cookie);
 builder.Services.AddSingleton<AuthProxyConfig>(authProxyConfig);
 
 // Construct identity providers.
@@ -24,6 +25,9 @@ builder.Services.AddSingleton<IdentityProviderFactory>(identityProviderFactory);
 builder.Services.AddHttpForwarder();
 builder.Services.AddSingleton<YarpRequestHandler>();
 
+// TODO-L: Set up ASP.NET Core Data Protection to share encryption keys etc across multiple instances.
+// See https://docs.microsoft.com/en-us/aspnet/core/security/data-protection/configuration/overview.
+
 // Add authentication services.
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // Don't map any standard OpenID Connect claims to Microsoft-specific claims.
 
@@ -31,8 +35,7 @@ JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // Don't map any sta
 var authenticationBuilder = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme);
 authenticationBuilder.AddCookie(options =>
 {
-    // TODO: Also rename other cookies (.AspNetCore.* for correlation and nonce for example)
-    // TODO: External key for cookie and other crypto operations?
+    // TODO-L: Also rename other cookies (.AspNetCore.* for correlation and nonce for example)
     options.Cookie.Name = authProxyConfig.Authentication.Cookie.Name;
     options.Events = new CookieAuthenticationEvents
     {
@@ -45,26 +48,51 @@ authenticationBuilder.AddCookie(options =>
     };
 });
 
+// Add inbound authentication using the self-issued JWT token sent to the backend app.
+authenticationBuilder.AddJwtBearer(Constants.AuthenticationSchemes.AuthProxy, options =>
+{
+    options.TokenValidationParameters.ValidIssuer = authProxyConfig.Authentication.TokenIssuer.Issuer;
+    options.TokenValidationParameters.ValidAudience = authProxyConfig.Authentication.TokenIssuer.Audience;
+    // TODO-M: Check against configured signing key of AuthProxy itself.
+    options.TokenValidationParameters.SignatureValidator = (string token, TokenValidationParameters parameters) => new JwtSecurityToken(token);
+});
+
 // Add an authentication service for each IdP.
 foreach (var identityProvider in identityProviderFactory.IdentityProviders)
 {
     identityProvider.AddAuthentication(authenticationBuilder);
 }
 
+builder.Services.AddControllers()
+    .AddMvcOptions(options =>
+    {
+        options.Conventions.Add(new ApiRoutingConvention(authProxyConfig.Api.BasePath));
+    })
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
+builder.Services.AddRouting(options => { options.LowercaseUrls = true; });
+
 var app = builder.Build();
 
-// Configure authentication.
+// Configure authentication and authorization.
 app.UseAuthentication();
+app.UseAuthorization();
+
+// Map API controllers.
+app.MapControllers();
 
 // Map a login path per IdP (e.g. "/.auth/login/<name>").
 foreach (var identityProvider in identityProviderFactory.IdentityProviders)
 {
-    app.Map(identityProvider.LoginPath, identityProvider.RequestLogin);
+    app.Map(identityProvider.LoginPath, identityProvider.RequestLoginAsync);
 }
 
 // Map a global logout path.
-var logoutPath = Defaults.LogoutPath; // TODO: Make this configurable.
-var postLogoutReturnUrlQueryParameterName = Defaults.PostLogoutReturnUrlQueryParameterName; // TODO: Make configurable.
+var logoutPath = Defaults.LogoutPath; // TODO-C: Make this configurable.
+var postLogoutReturnUrlQueryParameterName = Defaults.PostLogoutReturnUrlQueryParameterName; // TODO-C: Make configurable.
 app.Map(logoutPath, async httpContext =>
 {
     var returnUrl = "/";
@@ -74,7 +102,7 @@ app.Map(logoutPath, async httpContext =>
     }
     if (httpContext.User.Identity?.IsAuthenticated == true)
     {
-        // TODO: If configured, also trigger Single Sign-Out across all authenticated IdPs.
+        // TODO-L: If configured, also trigger Single Sign-Out across all authenticated IdPs.
         await httpContext.SignOutAsync(new AuthenticationProperties { RedirectUri = returnUrl });
     }
     httpContext.Response.StatusCode = (int)HttpStatusCode.Found;

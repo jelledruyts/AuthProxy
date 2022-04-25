@@ -8,13 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- TODO: Add if needed:
-      Microsoft.IdentityModel.Logging
-      Microsoft.IdentityModel.Protocols.OpenIdConnect
-      System.IdentityModel.Tokens.Jwt
-    -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="6.0.3" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.43.1" />
+    <PackageReference Include="Microsoft.Identity.Web.TokenCache" Version="1.23.1" />
     <PackageReference Include="Yarp.ReverseProxy" Version="1.1.0-rc.1.22152.1" />
   </ItemGroup>
 

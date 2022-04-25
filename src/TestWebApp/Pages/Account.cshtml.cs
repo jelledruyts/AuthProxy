@@ -3,23 +3,19 @@ using TestWebApp.Models;
 
 namespace TestWebApp.Pages;
 
-public class IndexModel : PageModel
+public class AccountModel : PageModel
 {
-    private readonly ILogger<IndexModel> logger;
-    public IList<InspectorValue>? RequestInfo { get; set; }
-    public IList<InspectorValue>? HttpHeadersInfo { get; set; }
+    private readonly ILogger<AccountModel> logger;
     public IList<InspectorValue>? IdentityInfo { get; set; }
     public IList<InspectorValue>? ClaimsInfo { get; set; }
 
-    public IndexModel(ILogger<IndexModel> logger)
+    public AccountModel(ILogger<AccountModel> logger)
     {
         this.logger = logger;
     }
 
     public void OnGet()
     {
-        this.RequestInfo = InspectorValue.GetRequestInfo(this.Request);
-        this.HttpHeadersInfo = InspectorValue.GetHttpHeadersInfo(this.Request);
         this.IdentityInfo = InspectorValue.GetIdentityInfo(this.User);
         this.ClaimsInfo = InspectorValue.GetClaimsInfo(this.User);
     }

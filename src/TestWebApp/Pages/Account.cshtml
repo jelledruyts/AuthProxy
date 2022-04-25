@@ -1,4 +1,5 @@
 @page
+@model AccountModel
 @{
     ViewData["Title"] = "Account";
 }
@@ -6,3 +7,12 @@
 <h2>Account</h2>
 
 <p>Welcome, @User.Identity!.Name!</p>
+
+<h3>Identity</h3>
+<partial name="_Table" model="Model.IdentityInfo" />
+
+@if (Model.ClaimsInfo != null && Model.ClaimsInfo.Any())
+{
+<h3>Claims</h3>
+<partial name="_Table" model="Model.ClaimsInfo" />
+}

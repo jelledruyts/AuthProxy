@@ -19,20 +19,12 @@ public class YarpRequestHandler
 
     public YarpRequestHandler(ILogger<YarpRequestHandler> logger, IHttpForwarder forwarder, AuthProxyConfig authProxyConfig)
     {
-        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication);
-        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.TokenIssuer);
-        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.TokenIssuer.Audience);
-        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.TokenIssuer.Issuer);
-        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.TokenIssuer.Expiration);
         ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.TokenIssuer.SigningSecret);
-        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.Cookie);
-        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.Cookie.Name);
-        ArgumentNullException.ThrowIfNull(authProxyConfig.Backend);
         ArgumentNullException.ThrowIfNull(authProxyConfig.Backend.Url);
         this.logger = logger;
         this.forwarder = forwarder;
         this.defaultTransformer = HttpTransformer.Default;
-        var tokenIssuer = new TokenIssuer(authProxyConfig.Authentication.TokenIssuer.Audience, authProxyConfig.Authentication.TokenIssuer.Issuer, authProxyConfig.Authentication.TokenIssuer.Expiration.Value, authProxyConfig.Authentication.TokenIssuer.SigningSecret);
+        var tokenIssuer = new TokenIssuer(authProxyConfig.Authentication.TokenIssuer.Audience, authProxyConfig.Authentication.TokenIssuer.Issuer, authProxyConfig.Authentication.TokenIssuer.Expiration, authProxyConfig.Authentication.TokenIssuer.SigningSecret);
         this.customTransformer = new YarpHttpTransformer(authProxyConfig.Authentication.Cookie.Name, tokenIssuer);
         this.requestOptions = new ForwarderRequestConfig { ActivityTimeout = TimeSpan.FromSeconds(100) };
         this.httpClient = new HttpMessageInvoker(new SocketsHttpHandler()
@@ -44,18 +36,18 @@ public class YarpRequestHandler
             ActivityHeadersPropagator = new ReverseProxyPropagator(DistributedContextPropagator.Current)
         });
         this.backendAppUrl = authProxyConfig.Backend.Url;
-        this.inboundPolicies = authProxyConfig.Policies?.Inbound ?? Array.Empty<InboundPolicyConfig>();
+        this.inboundPolicies = authProxyConfig.Policies.Inbound;
     }
 
     public async Task HandleRequest(HttpContext httpContext)
     {
-        var isForwardProxyRequest = httpContext.Request.Host.Host != "localhost"; // TODO: Should check on all "allowed" host names that the backend app expects.
+        var isForwardProxyRequest = httpContext.Request.Host.Host != "localhost"; // TODO-L: Should check on all "allowed" host names that the backend app expects.
         if (isForwardProxyRequest)
         {
             // EXPERIMENTAL!
             // This is a forward proxy request coming from the backend app (which has the proxy set as its HTTP proxy)
             // to reach an external service; forward the incoming request to the original destination.
-            // TODO: YARP doesn't support CONNECT requests to tunnel the HTTPS traffic through to the backend,
+            // TODO-L: YARP doesn't support CONNECT requests to tunnel the HTTPS traffic through to the backend,
             // so have to find another way to transparently attach tokens to outbound calls (if possible).
             var uriBuilder = new UriBuilder(httpContext.Request.Scheme, httpContext.Request.Host.Host, httpContext.Request.Host.Port.GetValueOrDefault(httpContext.Request.IsHttps ? 443 : 80));
             var destinationPrefix = uriBuilder.ToString();
@@ -93,9 +85,9 @@ public class YarpRequestHandler
                             if (idpNameClaim == null || !inboundPolicy.IdentityProviders.Contains(idpNameClaim.Value, StringComparer.OrdinalIgnoreCase))
                             {
                                 // The user was authenticated but NOT with one of the allowed IdPs specified on the policy.
-                                // TODO: Allow configuration to decide what to do when authenticated but not with a matching IdP:
+                                // TODO-L: Allow configuration to decide what to do when authenticated but not with a matching IdP:
                                 // either force authentication to an explicitly specified IdP or deny the request.
-                                // TODO: Make status code configurable.
+                                // TODO-C: Make status code configurable.
                                 shouldForwardRequest = false;
                                 httpContext.Response.StatusCode = (int)HttpStatusCode.Forbidden;
                                 await httpContext.Response.CompleteAsync();
@@ -114,7 +106,7 @@ public class YarpRequestHandler
                 else if (inboundPolicy.Action == PolicyAction.Deny)
                 {
                     // The request is explicitly denied.
-                    // TODO: Make status code configurable.
+                    // TODO-C: Make status code configurable.
                     shouldForwardRequest = false;
                     httpContext.Response.StatusCode = (int)HttpStatusCode.Forbidden;
                     await httpContext.Response.CompleteAsync();
@@ -140,7 +132,7 @@ public class YarpRequestHandler
     {
         foreach (var inboundPolicy in this.inboundPolicies)
         {
-            // TODO: Support more than a simple "starts with" match on the path pattern.
+            // TODO-L: Support more than a simple "starts with" match on the path pattern.
             if (inboundPolicy.PathPatterns != null && inboundPolicy.PathPatterns.Any(p => request.Path.StartsWithSegments(new PathString(p), StringComparison.InvariantCultureIgnoreCase)))
             {
                 // Stop processing more inbound policies when a match was found.

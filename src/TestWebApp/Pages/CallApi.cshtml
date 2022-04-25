@@ -1,14 +1,36 @@
-@page
+@page "{handler?}"
 @model CallApiModel
 @{
     ViewData["Title"] = "Call API";
 }
 
-<form method="post">
-    <input type="submit">
+<h2>Get Token</h2>
+
+<form method="post" asp-page-handler="GetToken">
+    <div class="mb-3">
+        <label for="identityProvider" class="form-label">Identity Provider</label>
+        <input type="text" class="form-control" id="identityProvider" name="identityProvider" value="@Model.IdentityProvider">
+    </div>
+    <div class="mb-3">
+        <label for="scopes" class="form-label">Scopes</label>
+        <input type="text" class="form-control" id="scopes" name="scopes" value="@Model.Scopes">
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+<h2 class="mt-3">Direct Call</h2>
+
+<p>
+    <b>Experimental!</b> If the backend app has an HTTP proxy set to point at Auth Proxy, it will tunnel its outbound
+    traffic (which is intended for the real API it's trying to reach) through Auth Proxy which can then auto-attach tokens.
+</p>
+
+<form method="post" asp-page-handler="DirectCall">
+    <button type="submit" class="btn btn-primary">Submit</button>
 </form>
 
 @if (Model.Result != null)
 {
+    <h2 class="mt-3">Result</h2>
     <pre>@Model.Result</pre>
 }
