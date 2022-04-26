@@ -13,12 +13,29 @@
 
 <form method="post" asp-page-handler="GetToken">
     <div class="mb-3">
-        <label for="identityProvider" class="form-label">Identity Provider</label>
-        <input type="text" class="form-control" id="identityProvider" name="identityProvider" value="@Model.IdentityProvider">
+        <label for="tokenRequestIdentityProvider" class="form-label">Identity Provider</label>
+        <input type="text" class="form-control" id="tokenRequestIdentityProvider" name="tokenRequestIdentityProvider" value="@Model.TokenRequestIdentityProvider">
     </div>
     <div class="mb-3">
-        <label for="scopes" class="form-label">Scopes</label>
-        <input type="text" class="form-control" id="scopes" name="scopes" value="@Model.Scopes">
+        <label for="tokenRequestScopes" class="form-label">Scopes</label>
+        <input type="text" class="form-control" id="tokenRequestScopes" name="tokenRequestScopes" value="@Model.TokenRequestScopes">
+    </div>
+    <div class="mb-3">
+        <div>
+            <label for="tokenRequestActorUser" class="form-label">Actor (who or what the token is impersonating)</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="tokenRequestActor" id="tokenRequestActorUser" value="User" checked="@(Model.TokenRequestActor == CallApiModel.Actor.User)">
+            <label class="form-check-label" for="tokenRequestActorUser">Current user</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="tokenRequestActor" id="tokenRequestActorApp" value="App" checked="@(Model.TokenRequestActor == CallApiModel.Actor.App)">
+            <label class="form-check-label" for="tokenRequestActorApp">The app itself</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="tokenRequestActor" id="tokenRequestActorAzureManagedIdentity" value="AzureManagedIdentity" checked="@(Model.TokenRequestActor == CallApiModel.Actor.AzureManagedIdentity)">
+            <label class="form-check-label" for="tokenRequestActorAzureManagedIdentity">The Azure managed identity of the app</label>
+        </div>
     </div>
     <button type="submit" class="btn btn-primary">Submit</button>
 </form>

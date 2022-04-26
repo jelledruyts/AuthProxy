@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using AuthProxy.Configuration;
 using AuthProxy.Models;
+using Azure.Core;
+using Azure.Identity;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Identity.Client;
@@ -57,16 +59,29 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
 
     public async override Task<TokenResponse> GetTokenAsync(HttpContext httpContext, TokenRequest request)
     {
-        // TODO-H: Check if request is for user or app.
         try
         {
             var confidentialClientApplication = GetConfidentialClientApplication(httpContext);
-            var userAccount = await GetUserAccountAsync(httpContext.User, confidentialClientApplication);
-            if (userAccount != null)
+            if (request.Actor == Actor.User)
             {
-                var token = await confidentialClientApplication.AcquireTokenSilent(request.Scopes, userAccount).ExecuteAsync();
-                ValidateScopes(request.Scopes, token.Scopes);
+                var userAccount = await GetUserAccountAsync(httpContext.User, confidentialClientApplication);
+                if (userAccount != null)
+                {
+                    var token = await confidentialClientApplication.AcquireTokenSilent(request.Scopes, userAccount).ExecuteAsync();
+                    ValidateScopes(request.Scopes, token.Scopes);
+                    return new TokenResponse { Status = TokenResponseStatus.Succeeded, Token = token.AccessToken };
+                }
+            }
+            else if (request.Actor == Actor.App)
+            {
+                var token = await confidentialClientApplication.AcquireTokenForClient(request.Scopes).ExecuteAsync();
                 return new TokenResponse { Status = TokenResponseStatus.Succeeded, Token = token.AccessToken };
+            }
+            else if (request.Actor == Actor.AzureManagedIdentity)
+            {
+                ArgumentNullException.ThrowIfNull(request.Scopes);
+                var token = await new DefaultAzureCredential().GetTokenAsync(new TokenRequestContext(request.Scopes.ToArray()));
+                return new TokenResponse { Status = TokenResponseStatus.Succeeded, Token = token.Token };
             }
         }
         catch (Exception exc)
