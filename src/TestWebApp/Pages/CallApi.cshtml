@@ -6,6 +6,11 @@
 
 <h2>Get Token</h2>
 
+@if (Model.InfoMessage != null)
+{
+    <p class="alert alert-info">@Model.InfoMessage</p>
+}
+
 <form method="post" asp-page-handler="GetToken">
     <div class="mb-3">
         <label for="identityProvider" class="form-label">Identity Provider</label>
@@ -20,7 +25,7 @@
 
 <h2 class="mt-3">Direct Call</h2>
 
-<p>
+<p class="alert alert-warning">
     <b>Experimental!</b> If the backend app has an HTTP proxy set to point at Auth Proxy, it will tunnel its outbound
     traffic (which is intended for the real API it's trying to reach) through Auth Proxy which can then auto-attach tokens.
 </p>
