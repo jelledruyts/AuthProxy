@@ -62,7 +62,7 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
 
     public override Task<TokenResponse> GetTokenAsync(HttpContext httpContext, TokenRequest request)
     {
-        // TODO-H: Provide a basic implementation (not using MSAL).
+        // TODO-L: Provide a basic implementation (not using MSAL).
         throw new NotImplementedException();
     }
 
@@ -71,6 +71,8 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
         var properties = new AuthenticationProperties();
         properties.RedirectUri = request.ReturnUrl;
         var scopesToRequest = new List<string>();
+        // TODO-M: In this flow, we should still include the statically configured OIDC scopes (such as "profile") otherwise
+        // the returned ID token will contain less information than from the initial login.
         AddScopes(scopesToRequest, true, false, request.Scopes);
         properties.SetParameter(OpenIdConnectParameterNames.Scope, scopesToRequest);
 

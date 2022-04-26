@@ -32,9 +32,10 @@ public class CallApiModel : PageModel
     {
         // If the return URL was invoked with query string parameters to remember the original
         // request, re-populate the form with those original values.
+        this.InfoMessage = this.Request.Query[nameof(TokenRequest.IdentityProvider)].Any() ? "We had to sign you back in first. Please retry the request." : null;
         this.TokenRequestIdentityProvider = this.Request.Query[nameof(TokenRequest.IdentityProvider)].FirstOrDefault() ?? this.TokenRequestIdentityProvider;
         this.TokenRequestScopes = this.Request.Query[nameof(TokenRequest.Scopes)].FirstOrDefault() ?? this.TokenRequestScopes;
-        this.InfoMessage = this.Request.Query[nameof(TokenRequest.IdentityProvider)].Any() ? "We had to sign you back in first. Please retry the request." : null;
+        this.TokenRequestActor = this.Request.Query[nameof(TokenRequest.Actor)].FirstOrDefault() != null ? Enum.Parse<Actor>(this.Request.Query[nameof(TokenRequest.Actor)].FirstOrDefault()!) : this.TokenRequestActor;
     }
 
     public async Task<IActionResult> OnPostGetToken()
@@ -122,9 +123,9 @@ public class CallApiModel : PageModel
 
     public class TokenRequest
     {
-        public string? IdentityProvider { get; set; } // TODO-M: If empty: use default IdP
+        public string? IdentityProvider { get; set; }
         public IList<string>? Scopes { get; set; }
-        public string? ReturnUrl { get; set; } // If a redirect is required, determines where to redirect back after the interaction completed.
+        public string? ReturnUrl { get; set; }
         public Actor Actor { get; set; }
     }
 

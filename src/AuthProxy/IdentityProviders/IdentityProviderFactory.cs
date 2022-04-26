@@ -5,21 +5,15 @@ namespace AuthProxy.IdentityProviders;
 public class IdentityProviderFactory
 {
     public IList<IdentityProvider> IdentityProviders { get; } = new List<IdentityProvider>();
+    public IdentityProvider? DefaultIdentityProvider { get; }
 
     public IdentityProviderFactory(AuthProxyConfig authProxyConfig)
     {
+        // TODO-L: Ensure IdentityProvider's Name is acceptable in URLs, unique across other IdPs and does not conflict with the default authentication scheme (Defaults.AuthenticationScheme)
+        // TODO-L: Ensure IdentityProvider's callback paths are unique across all configured IdPs and don't conflict with the default paths.
         if (authProxyConfig.Authentication.IdentityProviders != null && authProxyConfig.Authentication.IdentityProviders.Any())
         {
             var postLoginReturnUrlQueryParameterName = Defaults.PostLoginReturnUrlQueryParameterName; // TODO-C: Make configurable.
-
-            // Add an authentication service for the default IdP (e.g. "/.auth/login").
-            // Note that it will be added again later on, but in order to get a clean URL for the case where
-            // there's only a single IdP, it has to be added specifically as the login callback path
-            // has to be unique for each registered authentication service.
-            var defaultAuthenticationScheme = Defaults.AuthenticationScheme;
-            var defaultLoginPath = GetDefaultLoginPath();
-            var defaultLoginCallbackPath = GetDefaultLoginCallbackPath();
-            AddIdentityProvider(authProxyConfig.Authentication.IdentityProviders.First(), defaultAuthenticationScheme, defaultLoginPath, defaultLoginCallbackPath, postLoginReturnUrlQueryParameterName);
 
             // Add an authentication service for each IdP (e.g. "/.auth/login/<name>").
             foreach (var identityProviderConfig in authProxyConfig.Authentication.IdentityProviders)
@@ -28,33 +22,46 @@ public class IdentityProviderFactory
                 var authenticationScheme = identityProviderConfig.Name;
                 var loginPath = GetLoginPath(identityProviderConfig);
                 var loginCallbackPath = GetLoginCallbackPath(identityProviderConfig);
-                AddIdentityProvider(identityProviderConfig, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName);
+                var identityProvider = CreateIdentityProvider(identityProviderConfig, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName);
+                this.IdentityProviders.Add(identityProvider);
+            }
+
+            var defaultIdentityProvider = this.IdentityProviders.FirstOrDefault(i => string.Equals(i.Configuration.Name, authProxyConfig.Authentication.DefaultIdentityProvider, StringComparison.OrdinalIgnoreCase));
+            if (defaultIdentityProvider != null)
+            {
+                // Add an authentication service for the default IdP (e.g. "/.auth/login").
+                // Note that it was already added before, but in order to get a clean URL for the case where
+                // there's only a single IdP, it has to be added specifically as the login callback path
+                // has to be unique for each registered authentication service.
+                var defaultAuthenticationScheme = Defaults.AuthenticationScheme;
+                var defaultLoginPath = GetDefaultLoginPath();
+                var defaultLoginCallbackPath = GetDefaultLoginCallbackPath();
+                this.DefaultIdentityProvider = CreateIdentityProvider(defaultIdentityProvider.Configuration, defaultAuthenticationScheme, defaultLoginPath, defaultLoginCallbackPath, postLoginReturnUrlQueryParameterName);
+                this.IdentityProviders.Insert(0, this.DefaultIdentityProvider);
             }
         }
     }
 
-    private void AddIdentityProvider(IdentityProviderConfig configuration, string authenticationScheme, string loginPath, string loginCallbackPath, string postLoginReturnUrlQueryParameterName)
+    private IdentityProvider CreateIdentityProvider(IdentityProviderConfig configuration, string authenticationScheme, string loginPath, string loginCallbackPath, string postLoginReturnUrlQueryParameterName)
     {
-        // TODO-M: Ensure IdentityProvider's Name is acceptable in URLs, unique across other IdPs and does not conflict with the default authentication scheme (Defaults.AuthenticationScheme)
-        // TODO-M: Ensure IdentityProvider's callback paths are unique across all configured IdPs and don't conflict with the default paths.
         if (configuration.Type == IdentityProviderType.OpenIdConnect)
         {
-            this.IdentityProviders.Add(new OpenIdConnectIdentityProvider(configuration, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName));
+            return new OpenIdConnectIdentityProvider(configuration, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName);
         }
         else if (configuration.Type == IdentityProviderType.AzureAD)
         {
-            this.IdentityProviders.Add(new AzureADIdentityProvider(configuration, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName));
+            return new AzureADIdentityProvider(configuration, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName);
         }
         else if (configuration.Type == IdentityProviderType.AzureADB2C)
         {
-            this.IdentityProviders.Add(new AzureADB2CIdentityProvider(configuration, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName));
+            return new AzureADB2CIdentityProvider(configuration, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName);
         }
         else
         {
             throw new ArgumentOutOfRangeException(nameof(configuration.Type), $"Unknown {nameof(IdentityProviderType)}: \"{configuration.Type.ToString()}\".");
         }
     }
-    
+
     public IdentityProvider? GetIdentityProvider(string? name)
     {
         return this.IdentityProviders.FirstOrDefault(i => i.Configuration.Name == name);
