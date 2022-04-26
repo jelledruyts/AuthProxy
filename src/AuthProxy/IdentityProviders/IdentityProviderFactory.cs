@@ -45,6 +45,10 @@ public class IdentityProviderFactory
         {
             this.IdentityProviders.Add(new AzureADIdentityProvider(configuration, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName));
         }
+        else if (configuration.Type == IdentityProviderType.AzureADB2C)
+        {
+            this.IdentityProviders.Add(new AzureADB2CIdentityProvider(configuration, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName));
+        }
         else
         {
             throw new ArgumentOutOfRangeException(nameof(configuration.Type), $"Unknown {nameof(IdentityProviderType)}: \"{configuration.Type.ToString()}\".");

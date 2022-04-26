@@ -29,7 +29,7 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
             // only request "id_token"; if there's at least one non-standard OIDC scope, then we request "code id_token".
             options.ResponseType = OpenIdConnectResponseType.CodeIdToken; // TODO-L: In case no access token is ever needed, can simplify to use "id_token" and avoid client secret.
             var requestRefreshToken = true; // TODO-L: Only if needed (non-default OIDC scope)
-            AddScopes(options.Scope, requestRefreshToken, null);
+            AddScopes(options.Scope, requestRefreshToken, true, null);
             options.ClientId = this.Configuration.ClientId;
             options.ClientSecret = this.Configuration.ClientSecret;
             options.CallbackPath = this.LoginCallbackPath; // Note that the callback path must be unique per identity provider.
@@ -71,7 +71,7 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
         var properties = new AuthenticationProperties();
         properties.RedirectUri = request.ReturnUrl;
         var scopesToRequest = new List<string>();
-        AddScopes(scopesToRequest, true, request.Scopes);
+        AddScopes(scopesToRequest, true, false, request.Scopes);
         properties.SetParameter(OpenIdConnectParameterNames.Scope, scopesToRequest);
 
         // Remember original response properties.
@@ -100,13 +100,10 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
         }
     }
 
-    protected void AddScopes(ICollection<string> target, bool requestRefreshToken, ICollection<string>? additionalScopes)
+    protected void AddScopes(ICollection<string> target, bool requestRefreshToken, bool includeConfiguredScopes, ICollection<string>? additionalScopes)
     {
-        // The "openid" and "profile" scopes are added implicitly by middleware, add them explicitly here.
-        foreach (var scope in OpenIdConnectScope.OpenIdProfile.Split(' '))
-        {
-            AddScope(target, scope);
-        }
+        // The "openid" scope is added implicitly by middleware, add it explicitly here for use with MSAL.
+        AddScope(target, OpenIdConnectScope.OpenId);
 
         // Only if needed and allowed, request a refresh token as part of the flow.
         if (requestRefreshToken && this.Configuration.AllowRefreshTokens)
@@ -114,8 +111,8 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
             AddScope(target, OpenIdConnectScope.OfflineAccess);
         }
 
-        // Add the statically defined scopes.
-        if (this.Configuration.Scopes != null)
+        // Add the statically defined scopes if needed.
+        if (includeConfiguredScopes && this.Configuration.Scopes != null)
         {
             foreach (var scope in this.Configuration.Scopes)
             {
