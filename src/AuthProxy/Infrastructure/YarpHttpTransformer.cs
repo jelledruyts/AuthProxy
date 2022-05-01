@@ -44,15 +44,15 @@ public class YarpHttpTransformer : HttpTransformer
             {
                 // TODO-C: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
                 // For example: proxyRequest.Headers.Add("X-Auth-Token", customPrefix + backendAppToken + customSuffix);
-                var backendAppToken = this.tokenIssuer.CreateToken(backendAppIdentity.Claims);
+                var backendAppToken = this.tokenIssuer.CreateToken(backendAppIdentity);
                 proxyRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", backendAppToken);
             }
         }
 
         var roundTripIdentity = httpContext.User.GetOrCreateIdentity(Constants.AuthenticationTypes.RoundTrip);
-        // TODO-M: Encrypt the information rather than package it up in a (signed but readable) JWT.
+        // TODO-L: Encrypt the information rather than package it up in a (signed but readable) JWT.
         // TODO-C: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
-        var roundTripToken = this.tokenIssuer.CreateToken(roundTripIdentity.Claims);
+        var roundTripToken = this.tokenIssuer.CreateToken(roundTripIdentity, TokenIssuer.ApiAudience);
         proxyRequest.Headers.Add("X-AuthProxy-API-token", roundTripToken);
 
         // TODO-C: Make configurable.

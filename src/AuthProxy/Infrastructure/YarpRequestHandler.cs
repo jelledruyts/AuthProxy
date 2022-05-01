@@ -17,14 +17,12 @@ public class YarpRequestHandler
     private readonly string backendAppUrl;
     private readonly IList<InboundPolicyConfig> inboundPolicies;
 
-    public YarpRequestHandler(ILogger<YarpRequestHandler> logger, IHttpForwarder forwarder, AuthProxyConfig authProxyConfig)
+    public YarpRequestHandler(ILogger<YarpRequestHandler> logger, IHttpForwarder forwarder, AuthProxyConfig authProxyConfig, TokenIssuer tokenIssuer)
     {
-        ArgumentNullException.ThrowIfNull(authProxyConfig.Authentication.TokenIssuer.SigningSecret);
         ArgumentNullException.ThrowIfNull(authProxyConfig.Backend.Url);
         this.logger = logger;
         this.forwarder = forwarder;
         this.defaultTransformer = HttpTransformer.Default;
-        var tokenIssuer = new TokenIssuer(authProxyConfig.Authentication.TokenIssuer.Audience, authProxyConfig.Authentication.TokenIssuer.Issuer, authProxyConfig.Authentication.TokenIssuer.Expiration, authProxyConfig.Authentication.TokenIssuer.SigningSecret);
         this.customTransformer = new YarpHttpTransformer(authProxyConfig.Authentication.Cookie.Name, tokenIssuer);
         this.requestOptions = new ForwarderRequestConfig { ActivityTimeout = TimeSpan.FromSeconds(100) };
         this.httpClient = new HttpMessageInvoker(new SocketsHttpHandler()

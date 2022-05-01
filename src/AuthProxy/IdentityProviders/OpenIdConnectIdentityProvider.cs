@@ -63,6 +63,7 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
     public override Task<TokenResponse> GetTokenAsync(HttpContext httpContext, TokenRequest request)
     {
         // TODO-L: Provide a basic implementation (not using MSAL).
+        // Possibly use IdentityModel: https://identitymodel.readthedocs.io/en/latest/aspnetcore/web.html
         throw new NotImplementedException();
     }
 

@@ -1,46 +1,52 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
+using System.Security.Cryptography.X509Certificates;
+using AuthProxy.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
 namespace AuthProxy.Infrastructure;
 
 public class TokenIssuer
 {
-    private readonly string audience;
-    private readonly string issuer;
+    public const string ApiAudience = "AuthProxy.API";
     private readonly TimeSpan expiration;
     private readonly JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
-    private readonly SigningCredentials signingCredentials;
+    public string Audience { get; }
+    public string Issuer { get; }
+    public IList<SigningCredentials> SigningCredentials { get; } = new List<SigningCredentials>();
 
-    public TokenIssuer(string audience, string issuer, TimeSpan expiration, string signingSecret)
+    public TokenIssuer(TokenIssuerConfig config)
     {
-        this.audience = audience;
-        this.issuer = issuer;
-        this.expiration = expiration;
-        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingSecret));
-        this.signingCredentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256Signature);
+        this.Audience = config.Audience;
+        this.Issuer = config.Issuer;
+        this.expiration = config.Expiration;
+        if (config.SigningCertificates.Count == 0)
+        {
+            throw new ArgumentOutOfRangeException("There are no signing certificates configured for the token issuer.");
+        }
+        foreach (var certificateConfig in config.SigningCertificates)
+        {
+            ArgumentNullException.ThrowIfNull(certificateConfig.Path);
+            var certificate = new X509Certificate2(certificateConfig.Path, certificateConfig.Password);
+            var signingKey = new X509SecurityKey(certificate);
+            this.SigningCredentials.Add(new SigningCredentials(signingKey, SecurityAlgorithms.RsaSha256));
+        }
     }
 
-    public string CreateToken(IEnumerable<Claim> claims)
-    {
-        return this.CreateToken(claims, this.audience, this.issuer, this.expiration);
-    }
-
-    public string CreateToken(IEnumerable<Claim> claims, string audience, string issuer, TimeSpan expiration)
+    public string CreateToken(ClaimsIdentity identity, string? audience = null)
     {
         var nowUtc = DateTime.UtcNow;
         var issuedUtc = nowUtc.AddMinutes(-5); // Account for clock skew.
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {
-            Audience = audience,
-            Expires = nowUtc.Add(expiration),
+            Audience = audience ?? this.Audience,
+            Expires = nowUtc.Add(this.expiration),
             IssuedAt = issuedUtc,
-            Issuer = issuer,
+            Issuer = this.Issuer,
             NotBefore = issuedUtc,
-            SigningCredentials = this.signingCredentials,
-            Subject = new ClaimsIdentity(claims)
+            SigningCredentials = this.SigningCredentials.First(),
+            Subject = identity
         };
 
         var token = this.tokenHandler.CreateToken(tokenDescriptor);

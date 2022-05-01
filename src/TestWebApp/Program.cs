@@ -2,7 +2,6 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,12 +31,8 @@ JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // Don't map any sta
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.TokenValidationParameters.ValidIssuer = "AuthProxy";
-        options.TokenValidationParameters.ValidAudience = "AuthProxyBackendApp";
-        // Skip checking of the signature.
-        // TODO-M: Check against configured signing key of AuthProxy by having it expose OIDC metadata.
-        options.TokenValidationParameters.SignatureValidator = (string token, TokenValidationParameters parameters) => new JwtSecurityToken(token);
-
+        options.Authority = "https://localhost:7268"; // Refer back to Auth Proxy's OIDC metadata endpoint to validate incoming tokens.
+        options.TokenValidationParameters.ValidAudience = "AuthProxy.BackendApp"; // The audience of the token is defined in Auth Proxy's configuration.
         options.TokenValidationParameters.NameClaimType = "name";
         options.TokenValidationParameters.RoleClaimType = "roles";
     });

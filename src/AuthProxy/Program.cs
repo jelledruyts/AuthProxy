@@ -7,7 +7,6 @@ using AuthProxy.IdentityProviders;
 using AuthProxy.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.IdentityModel.Tokens;
 
 // Set up the web application and DI container.
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +15,10 @@ var builder = WebApplication.CreateBuilder(args);
 var authProxyConfig = new AuthProxyConfig();
 builder.Configuration.Bind("AuthProxy", authProxyConfig);
 builder.Services.AddSingleton<AuthProxyConfig>(authProxyConfig);
+
+// Construct the token issuer.
+var tokenIssuer = new TokenIssuer(authProxyConfig.Authentication.TokenIssuer);
+builder.Services.AddSingleton<TokenIssuer>(tokenIssuer);
 
 // Construct identity providers.
 var identityProviderFactory = new IdentityProviderFactory(authProxyConfig);
@@ -48,13 +51,13 @@ authenticationBuilder.AddCookie(options =>
     };
 });
 
-// Add inbound authentication using the self-issued JWT token sent to the backend app.
+// Add inbound authentication using the self-issued roundtrip JWT token sent to the backend app.
 authenticationBuilder.AddJwtBearer(Constants.AuthenticationSchemes.AuthProxy, options =>
 {
-    options.TokenValidationParameters.ValidIssuer = authProxyConfig.Authentication.TokenIssuer.Issuer;
-    options.TokenValidationParameters.ValidAudience = authProxyConfig.Authentication.TokenIssuer.Audience;
-    // TODO-M: Check against configured signing key of AuthProxy itself.
-    options.TokenValidationParameters.SignatureValidator = (string token, TokenValidationParameters parameters) => new JwtSecurityToken(token);
+    // Trust JWT tokens that were issued from the local token issuer.
+    options.TokenValidationParameters.ValidAudience = TokenIssuer.ApiAudience;
+    options.TokenValidationParameters.ValidIssuer = tokenIssuer.Issuer;
+    options.TokenValidationParameters.IssuerSigningKeys = tokenIssuer.SigningCredentials.Select(c => c.Key).ToArray();
 });
 
 // Add an authentication service for each IdP.
