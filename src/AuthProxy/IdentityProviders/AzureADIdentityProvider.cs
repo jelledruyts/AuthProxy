@@ -11,7 +11,7 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace AuthProxy.IdentityProviders;
 
-// TODO-L: The "login_hint" claim (if present) of the current principal's "original" (federated) identity
+// TODO: The "login_hint" claim (if present) of the current principal's "original" (federated) identity
 // can be used as the "logout_hint" when a logout is requested towards the IdP.
 // See https://docs.microsoft.com/azure/active-directory/develop/v2-protocols-oidc#send-a-sign-out-request.
 
@@ -157,7 +157,7 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
             ClientId = this.Configuration.ClientId,
             ClientSecret = this.Configuration.ClientSecret,
             TenantId = this.tenantId,
-            // TODO-L: When exchanging an authorization code for an access token, the RedirectUri needs to be set to the
+            // TODO: When exchanging an authorization code for an access token, the RedirectUri needs to be set to the
             // same value as when the authorization code was requested.
             // We build it up dynamically here but perhaps it can be stored during the initial flow and and retrieved here.
             // See https://github.com/dotnet/aspnetcore/blob/ac39742bf152a0d2980059289822e1d3526a880a/src/Security/Authentication/OpenIdConnect/src/OpenIdConnectHandler.cs#L457.

@@ -38,7 +38,7 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
             AddScopes(options.Scope, this.Configuration.SignInScopes);
 
             // Set token validation parameters.
-            options.TokenValidationParameters.ValidAudiences = this.Configuration.AllowedAudiences; // TODO-L: Warn if there are no valid audiences configured.
+            options.TokenValidationParameters.ValidAudiences = this.Configuration.AllowedAudiences; // TODO: Warn if there are no valid audiences configured.
 
             // Handle events.
             options.Events = GetEvents();
@@ -65,7 +65,7 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
 
     public override Task<TokenResponse> GetTokenAsync(HttpContext httpContext, TokenRequest request)
     {
-        // TODO-L: Provide a basic implementation (not using MSAL).
+        // TODO: Provide a basic implementation (not using MSAL).
         // Possibly use IdentityModel: https://identitymodel.readthedocs.io/en/latest/aspnetcore/web.html
         throw new NotImplementedException();
     }
@@ -88,7 +88,7 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
         var oldRedirectCookies = httpContext.Response.Headers.SetCookie.ToArray();
         try
         {
-            // TODO-L: This sets the current response to redirect so we can extract the redirect URL;
+            // TODO: This sets the current response to redirect so we can extract the redirect URL;
             // later on the response status and body will be replaced again with the result of the current API call.
             // There might be a cleaner way to get the redirect URL without impacting the actual current HTTP context,
             // although the authentication handler does seem to only work by triggering the redirect without a

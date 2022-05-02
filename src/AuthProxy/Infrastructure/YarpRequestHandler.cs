@@ -23,7 +23,7 @@ public class YarpRequestHandler
         this.logger = logger;
         this.forwarder = forwarder;
         this.defaultTransformer = HttpTransformer.Default;
-        this.customTransformer = new YarpHttpTransformer(authProxyConfig.Authentication.Cookie.Name, tokenIssuer);
+        this.customTransformer = new YarpHttpTransformer(authProxyConfig.Authentication.Cookie.Name, authProxyConfig.Backend.HostPolicy, authProxyConfig.Backend.HostName, tokenIssuer);
         this.requestOptions = new ForwarderRequestConfig { ActivityTimeout = TimeSpan.FromSeconds(100) };
         this.httpClient = new HttpMessageInvoker(new SocketsHttpHandler()
         {
@@ -39,13 +39,13 @@ public class YarpRequestHandler
 
     public async Task HandleRequest(HttpContext httpContext)
     {
-        var isForwardProxyRequest = httpContext.Request.Host.Host != "localhost"; // TODO-L: Should check on all "allowed" host names that the backend app expects.
+        var isForwardProxyRequest = httpContext.Request.Host.Host != "localhost"; // TODO: Should check on all "allowed" host names that the backend app expects.
         if (isForwardProxyRequest)
         {
             // EXPERIMENTAL!
             // This is a forward proxy request coming from the backend app (which has the proxy set as its HTTP proxy)
             // to reach an external service; forward the incoming request to the original destination.
-            // TODO-L: YARP doesn't support CONNECT requests to tunnel the HTTPS traffic through to the backend,
+            // TODO: YARP doesn't support CONNECT requests to tunnel the HTTPS traffic through to the backend,
             // so have to find another way to transparently attach tokens to outbound calls (if possible).
             var uriBuilder = new UriBuilder(httpContext.Request.Scheme, httpContext.Request.Host.Host, httpContext.Request.Host.Port.GetValueOrDefault(httpContext.Request.IsHttps ? 443 : 80));
             var destinationPrefix = uriBuilder.ToString();
@@ -83,9 +83,8 @@ public class YarpRequestHandler
                             if (idpNameClaim == null || !inboundPolicy.IdentityProviders.Contains(idpNameClaim.Value, StringComparer.OrdinalIgnoreCase))
                             {
                                 // The user was authenticated but NOT with one of the allowed IdPs specified on the policy.
-                                // TODO-L: Allow configuration to decide what to do when authenticated but not with a matching IdP:
+                                // TODO: Allow configuration to decide what to do when authenticated but not with a matching IdP:
                                 // either force authentication to an explicitly specified IdP or deny the request.
-                                // TODO-C: Make status code configurable.
                                 shouldForwardRequest = false;
                                 httpContext.Response.StatusCode = (int)HttpStatusCode.Forbidden;
                                 await httpContext.Response.CompleteAsync();
@@ -104,7 +103,6 @@ public class YarpRequestHandler
                 else if (inboundPolicy.Action == PolicyAction.Deny)
                 {
                     // The request is explicitly denied.
-                    // TODO-C: Make status code configurable.
                     shouldForwardRequest = false;
                     httpContext.Response.StatusCode = (int)HttpStatusCode.Forbidden;
                     await httpContext.Response.CompleteAsync();
@@ -130,7 +128,7 @@ public class YarpRequestHandler
     {
         foreach (var inboundPolicy in this.inboundPolicies)
         {
-            // TODO-L: Support more than a simple "starts with" match on the path pattern.
+            // TODO: Support more than a simple "starts with" match on the path pattern.
             if (inboundPolicy.PathPatterns != null && inboundPolicy.PathPatterns.Any(p => request.Path.StartsWithSegments(new PathString(p), StringComparison.InvariantCultureIgnoreCase)))
             {
                 // Stop processing more inbound policies when a match was found.

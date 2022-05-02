@@ -4,4 +4,6 @@ public class BackendConfig
 {
     public string? Url { get; set; }
     public string Audience { get; set; } = Defaults.BackendAppAudience;
+    public HostPolicy HostPolicy { get; set; }
+    public string? HostName { get; set; }
 }

@@ -28,7 +28,7 @@ builder.Services.AddSingleton<IdentityProviderFactory>(identityProviderFactory);
 builder.Services.AddHttpForwarder();
 builder.Services.AddSingleton<YarpRequestHandler>();
 
-// TODO-L: Set up ASP.NET Core Data Protection to share encryption keys etc across multiple instances.
+// TODO: Set up ASP.NET Core Data Protection to share encryption keys etc across multiple instances.
 // See https://docs.microsoft.com/en-us/aspnet/core/security/data-protection/configuration/overview.
 
 // Add authentication services.
@@ -38,7 +38,7 @@ JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // Don't map any sta
 var authenticationBuilder = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme);
 authenticationBuilder.AddCookie(options =>
 {
-    // TODO-L: Also rename other cookies (.AspNetCore.* for correlation and nonce for example)
+    // TODO: Also rename other cookies (.AspNetCore.* for correlation and nonce for example)
     options.Cookie.Name = authProxyConfig.Authentication.Cookie.Name;
     options.Events = new CookieAuthenticationEvents
     {
@@ -94,8 +94,8 @@ foreach (var identityProvider in identityProviderFactory.IdentityProviders)
 }
 
 // Map a global logout path.
-var logoutPath = Defaults.LogoutPath; // TODO-C: Make this configurable.
-var postLogoutReturnUrlQueryParameterName = Defaults.PostLogoutReturnUrlQueryParameterName; // TODO-C: Make configurable.
+var logoutPath = authProxyConfig.Authentication.LogoutPath;
+var postLogoutReturnUrlQueryParameterName = authProxyConfig.Authentication.PostLogoutReturnUrlQueryParameterName;
 app.Map(logoutPath, async httpContext =>
 {
     var returnUrl = "/";
@@ -105,7 +105,7 @@ app.Map(logoutPath, async httpContext =>
     }
     if (httpContext.User.Identity?.IsAuthenticated == true)
     {
-        // TODO-L: If configured, also trigger Single Sign-Out across all authenticated IdPs.
+        // TODO: If configured, also trigger Single Sign-Out across all authenticated IdPs.
         await httpContext.SignOutAsync(new AuthenticationProperties { RedirectUri = returnUrl });
     }
     httpContext.Response.StatusCode = (int)HttpStatusCode.Found;

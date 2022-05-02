@@ -6,7 +6,7 @@ public class IdentityProviderConfig
     public IdentityProviderType Type { get; set; } = IdentityProviderType.OpenIdConnect;
     public string? Authority { get; set; }
     public string? ClientId { get; set; }
-    public string? ClientSecret { get; set; } // TODO-L: ClientSecretEnvVarName/Reference/...?
+    public string? ClientSecret { get; set; } // TODO: ClientSecretEnvVarName/Reference/...?
     public string ResponseType { get; set; } = Defaults.ResponseType;
     public IList<string> DefaultScopes { get; set; } = new List<string>(); // Defines scopes that are always requested (typically standard OIDC scopes such as "email")
     public IList<string> SignInScopes { get; set; } = new List<string>(); // Defines scopes that are requested when the user is requested to sign in

@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Security.Claims;
 using System.Text;
+using AuthProxy.Configuration;
 using Microsoft.AspNetCore.Authentication;
 using Yarp.ReverseProxy.Forwarder;
 
@@ -10,11 +10,15 @@ namespace AuthProxy.Infrastructure;
 public class YarpHttpTransformer : HttpTransformer
 {
     private readonly string authProxyCookieName;
+    private readonly HostPolicy backendHostPolicy;
+    private readonly string? backendHostName;
     private readonly TokenIssuer tokenIssuer;
 
-    public YarpHttpTransformer(string authProxyCookieName, TokenIssuer tokenIssuer)
+    public YarpHttpTransformer(string authProxyCookieName, HostPolicy backendHostPolicy, string? backendHostName, TokenIssuer tokenIssuer)
     {
         this.authProxyCookieName = authProxyCookieName;
+        this.backendHostPolicy = backendHostPolicy;
+        this.backendHostName = backendHostName;
         this.tokenIssuer = tokenIssuer;
     }
 
@@ -38,11 +42,11 @@ public class YarpHttpTransformer : HttpTransformer
 
         if (httpContext.User.Identity?.IsAuthenticated == true)
         {
-            // TODO-L: Token should be cached rather than recreated for each request.
+            // TODO: Token should be cached rather than recreated for each request.
             var backendAppIdentity = httpContext.User.GetIdentity(Constants.AuthenticationTypes.BackendApp);
             if (backendAppIdentity != null)
             {
-                // TODO-C: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
+                // TODO: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
                 // For example: proxyRequest.Headers.Add("X-Auth-Token", customPrefix + backendAppToken + customSuffix);
                 var backendAppToken = this.tokenIssuer.CreateToken(backendAppIdentity);
                 proxyRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", backendAppToken);
@@ -50,14 +54,24 @@ public class YarpHttpTransformer : HttpTransformer
         }
 
         var roundTripIdentity = httpContext.User.GetOrCreateIdentity(Constants.AuthenticationTypes.RoundTrip);
-        // TODO-L: Encrypt the information rather than package it up in a (signed but readable) JWT.
-        // TODO-C: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
+        // TODO: Encrypt the information rather than package it up in a (signed but readable) JWT.
+        // TODO: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
         var roundTripToken = this.tokenIssuer.CreateToken(roundTripIdentity, TokenIssuer.ApiAudience);
         proxyRequest.Headers.Add("X-AuthProxy-API-token", roundTripToken);
 
-        // TODO-C: Make configurable.
-        proxyRequest.Headers.Host = httpContext.Request.Host.Value; // Use the original request header.
-        // proxyRequest.Headers.Host = null; // Suppress the original request header, use the one from the destination Uri.
+        // Determine how to set the outgoing Host header.
+        if (this.backendHostPolicy == HostPolicy.UseHostFromBackendApp)
+        {
+            proxyRequest.Headers.Host = null; // Suppress the original request header, use the one from the destination Uri.
+        }
+        else if (this.backendHostPolicy == HostPolicy.UseConfiguredHostName)
+        {
+            proxyRequest.Headers.Host = this.backendHostName; // Use the configured host name.
+        }
+        else
+        {
+            proxyRequest.Headers.Host = httpContext.Request.Host.Value; // Use the original request header.
+        }
     }
 
     /// <summary>
@@ -114,7 +128,7 @@ public class YarpHttpTransformer : HttpTransformer
 
     private static void RemoveCookie(HttpRequestMessage proxyRequest, string cookieNamePrefix)
     {
-        // TODO-L: Add defensive coding to protect against maliciously formed cookie headers.
+        // TODO: Add defensive coding to protect against maliciously formed cookie headers.
         // https://datatracker.ietf.org/doc/html/rfc6265#section-5.4
         const string CookieHeaderName = "Cookie";
         const string CookieSeparator = "; ";
