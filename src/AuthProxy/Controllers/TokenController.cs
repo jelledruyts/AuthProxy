@@ -1,3 +1,4 @@
+using AuthProxy.Configuration;
 using AuthProxy.IdentityProviders;
 using AuthProxy.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -10,16 +11,33 @@ namespace AuthProxy.Controllers;
 [Authorize(AuthenticationSchemes = Constants.AuthenticationSchemes.AuthProxy)]
 public class TokenController : ControllerBase
 {
+    private readonly AuthProxyConfig authProxyConfig;
     private readonly IdentityProviderFactory identityProviderFactory;
 
-    public TokenController(IdentityProviderFactory identityProviderFactory)
+    public TokenController(AuthProxyConfig authProxyConfig, IdentityProviderFactory identityProviderFactory)
     {
+        this.authProxyConfig = authProxyConfig;
         this.identityProviderFactory = identityProviderFactory;
     }
 
     [HttpPost]
     public async Task<ActionResult<TokenResponse>> GetTokenAsync(TokenRequest request)
     {
+        if (!string.IsNullOrWhiteSpace(request.Profile))
+        {
+            // A configured token request profile was requested, look it up.
+            var profile = this.authProxyConfig.Authentication.TokenRequestProfiles.FirstOrDefault(p => string.Equals(p.Name, request.Profile, StringComparison.OrdinalIgnoreCase));
+            if (profile == null)
+            {
+                return BadRequest();
+            }
+            // Replace unspecified properties (and only those) in the request with configured properties of the profile.
+            request.Actor ??= profile.Actor;
+            request.IdentityProvider ??= profile.IdentityProvider;
+            request.ReturnUrl ??= profile.ReturnUrl;
+            request.Scopes ??= profile.Scopes;
+        }
+
         var identityProvider = default(IdentityProvider);
         if (request.IdentityProvider == null)
         {

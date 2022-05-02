@@ -10,20 +10,25 @@ public class CallApiModel : PageModel
 {
     private readonly ILogger<IndexModel> logger;
     private readonly IHttpClientFactory httpClientFactory;
+    private readonly Uri authProxyBaseUrl;
     private readonly JsonSerializerOptions jsonSerializerOptions;
     [BindProperty]
-    public string? TokenRequestIdentityProvider { get; set; } = "aad";
+    public string? TokenRequestProfile { get; set; } = "UserCallsGraph";
     [BindProperty]
-    public string? TokenRequestScopes { get; set; } = "user.read";
+    public string? TokenRequestIdentityProvider { get; set; }
+    [BindProperty]
+    public string? TokenRequestScopes { get; set; }
     [BindProperty]
     public Actor TokenRequestActor { get; set; } = Actor.User;
     public string? InfoMessage { get; set; }
-    public string? Result { get; set; }
+    public string? GetTokenResult { get; set; }
+    public string? DirectCallResult { get; set; }
 
-    public CallApiModel(ILogger<IndexModel> logger, IHttpClientFactory httpClientFactory)
+    public CallApiModel(ILogger<IndexModel> logger, IHttpClientFactory httpClientFactory, IConfiguration configuration)
     {
         this.logger = logger;
         this.httpClientFactory = httpClientFactory;
+        this.authProxyBaseUrl = new Uri(configuration.GetValue<string>("AuthProxyBaseUrl"));
         this.jsonSerializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         this.jsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     }
@@ -32,7 +37,8 @@ public class CallApiModel : PageModel
     {
         // If the return URL was invoked with query string parameters to remember the original
         // request, re-populate the form with those original values.
-        this.InfoMessage = this.Request.Query[nameof(TokenRequest.IdentityProvider)].Any() ? "We had to sign you back in first. Please retry the request." : null;
+        this.InfoMessage = this.Request.Query[nameof(TokenRequest.Profile)].Any() || this.Request.Query[nameof(TokenRequest.IdentityProvider)].Any() ? "We had to sign you back in first. Please retry the request." : null;
+        this.TokenRequestProfile = this.Request.Query[nameof(TokenRequest.Profile)].FirstOrDefault() ?? this.TokenRequestProfile;
         this.TokenRequestIdentityProvider = this.Request.Query[nameof(TokenRequest.IdentityProvider)].FirstOrDefault() ?? this.TokenRequestIdentityProvider;
         this.TokenRequestScopes = this.Request.Query[nameof(TokenRequest.Scopes)].FirstOrDefault() ?? this.TokenRequestScopes;
         this.TokenRequestActor = this.Request.Query[nameof(TokenRequest.Actor)].FirstOrDefault() != null ? Enum.Parse<Actor>(this.Request.Query[nameof(TokenRequest.Actor)].FirstOrDefault()!) : this.TokenRequestActor;
@@ -45,27 +51,36 @@ public class CallApiModel : PageModel
             // Prepare the token request for the Auth Proxy API.
             var request = new TokenRequest
             {
-                IdentityProvider = this.TokenRequestIdentityProvider,
-                Scopes = this.TokenRequestScopes?.Split(" "),
-                Actor = this.TokenRequestActor,
                 // If a redirect would be necessary, return back to this page with additional query parameters to remember the original request values.
-                ReturnUrl = this.Url.Page("CallApi", null, new { IdentityProvider = this.TokenRequestIdentityProvider, Scopes = this.TokenRequestScopes }, this.HttpContext.Request.Scheme, this.HttpContext.Request.Host.Value)
+                ReturnUrl = this.Url.Page("CallApi", null, new { Profile = this.TokenRequestProfile, IdentityProvider = this.TokenRequestIdentityProvider, Scopes = this.TokenRequestScopes }, this.HttpContext.Request.Scheme, this.HttpContext.Request.Host.Value)
             };
+            if (!string.IsNullOrWhiteSpace(this.TokenRequestProfile))
+            {
+                // A token request profile was request, don't specify the other properties.
+                request.Profile = this.TokenRequestProfile;
+            }
+            else
+            {
+                request.IdentityProvider = this.TokenRequestIdentityProvider;
+                request.Actor = this.TokenRequestActor;
+                request.Scopes = this.TokenRequestScopes?.Split(" ");
+            }
 
             // Retrieve the authorization token that Auth Proxy provided to call back into its own API.
             var httpClient = this.httpClientFactory.CreateClient();
+            httpClient.BaseAddress = this.authProxyBaseUrl;
             var authorizationValue = this.HttpContext.Request.Headers["X-AuthProxy-API-token"].FirstOrDefault();
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authorizationValue);
 
             // Perform the API call towards Auth Proxy.
-            var responseMessage = await httpClient.PostAsync("https://localhost:7268/.auth/api/token", JsonContent.Create(request));
+            var responseMessage = await httpClient.PostAsync("/.auth/api/token", JsonContent.Create(request));
             var responseBody = await responseMessage.Content.ReadAsStringAsync();
 
             // Check the API response.
             if (!responseMessage.IsSuccessStatusCode)
             {
                 // Something went wrong while calling the API itself.
-                this.Result = responseMessage.StatusCode.ToString() + ". " + responseBody;
+                this.GetTokenResult = responseMessage.StatusCode.ToString() + ". " + responseBody;
             }
             else
             {
@@ -87,13 +102,13 @@ public class CallApiModel : PageModel
                 {
                     // The token request succeeded, output the token itself (in a real world scenario, the token would
                     // be used to call a backend API of course).
-                    this.Result = tokenResponse?.Token;
+                    this.GetTokenResult = tokenResponse?.Token;
                 }
             }
         }
         catch (Exception exc)
         {
-            this.Result = exc.ToString();
+            this.GetTokenResult = exc.ToString();
         }
         return Page();
     }
@@ -104,11 +119,11 @@ public class CallApiModel : PageModel
         {
             var httpClient = this.httpClientFactory.CreateClient();
             // this.GraphResult = await httpClient.GetStringAsync("https://graph.microsoft.com/v1.0/users/me");
-            this.Result = await httpClient.GetStringAsync("http://ipinfo.io/ip");
+            this.DirectCallResult = await httpClient.GetStringAsync("http://ipinfo.io/ip");
         }
         catch (Exception exc)
         {
-            this.Result = exc.ToString();
+            this.DirectCallResult = exc.ToString();
         }
     }
 
@@ -123,10 +138,11 @@ public class CallApiModel : PageModel
 
     public class TokenRequest
     {
+        public string? Profile { get; set; }
         public string? IdentityProvider { get; set; }
+        public Actor? Actor { get; set; }
         public IList<string>? Scopes { get; set; }
         public string? ReturnUrl { get; set; }
-        public Actor Actor { get; set; }
     }
 
     public enum TokenResponseStatus

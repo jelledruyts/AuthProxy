@@ -31,7 +31,7 @@ JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // Don't map any sta
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = "https://localhost:7268"; // Refer back to Auth Proxy's OIDC metadata endpoint to validate incoming tokens.
+        options.Authority = builder.Configuration.GetValue<string>("AuthProxyBaseUrl"); // Refer back to Auth Proxy's OIDC metadata endpoint to validate incoming tokens.
         options.TokenValidationParameters.ValidAudience = "AuthProxy.BackendApp"; // The audience of the token is defined in Auth Proxy's configuration.
         options.TokenValidationParameters.NameClaimType = "name";
         options.TokenValidationParameters.RoleClaimType = "roles";

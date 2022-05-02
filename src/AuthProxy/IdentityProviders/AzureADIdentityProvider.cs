@@ -63,7 +63,7 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
         try
         {
             var confidentialClientApplication = GetConfidentialClientApplication(httpContext);
-            if (request.Actor == Actor.User)
+            if (request.Actor == null || request.Actor == Actor.User)
             {
                 var userAccount = await GetUserAccountAsync(httpContext.User, confidentialClientApplication);
                 if (userAccount != null)
