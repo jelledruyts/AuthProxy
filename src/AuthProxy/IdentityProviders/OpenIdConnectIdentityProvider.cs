@@ -1,3 +1,4 @@
+using System.Net;
 using AuthProxy.Configuration;
 using AuthProxy.Models;
 using Microsoft.AspNetCore.Authentication;
@@ -8,6 +9,8 @@ namespace AuthProxy.IdentityProviders;
 
 public class OpenIdConnectIdentityProvider : IdentityProvider
 {
+    private OpenIdConnectOptions? openIdConnectOptions;
+
     public OpenIdConnectIdentityProvider(IdentityProviderConfig config, string authenticationScheme, string loginPath, string loginCallbackPath, string postLoginReturnUrlQueryParameterName)
         : base(config, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName)
     {
@@ -17,22 +20,22 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
     {
         authenticationBuilder.AddOpenIdConnect(this.AuthenticationScheme, options =>
         {
+            this.openIdConnectOptions = options;
+
             // Set main options.
             options.ClaimActions.Clear(); // Don't change any incoming claims, let the claims transformer do that.
             options.Authority = this.Configuration.Authority;
-            // TODO-M: Because we use ChallengeAsync to get a redirect URL (see GetTokenResponseForRedirectAsync)
-            // and that uses the statically configured ResponseType defined here, we cannot dynamically
-            // override it to use an auth code flow only when needed: the "code" response type must already
-            // be included here even if no access token is initially required. This restriction may be removed
-            // when using a different mechanism to build the redirect URL instead of ChallengeAsync.
-            // In that case, we can check if the configured scopes are *only* standard OIDC scopes in which case we
-            // only request "id_token"; if there's at least one non-standard OIDC scope, then we request "code id_token".
-            options.ResponseType = OpenIdConnectResponseType.CodeIdToken; // TODO-L: In case no access token is ever needed, can simplify to use "id_token" and avoid client secret.
-            var requestRefreshToken = true; // TODO-L: Only if needed (non-default OIDC scope)
-            AddScopes(options.Scope, requestRefreshToken, true, null);
             options.ClientId = this.Configuration.ClientId;
             options.ClientSecret = this.Configuration.ClientSecret;
             options.CallbackPath = this.LoginCallbackPath; // Note that the callback path must be unique per identity provider.
+
+            // By default, request "code id_token" to retrieve an authorization code along with the id_token.
+            // In case no access token is ever needed, this can be overridden in configuration to simply use "id_token"
+            // (in which case a client secret isn't even needed).
+            options.ResponseType = this.Configuration.ResponseType;
+            
+            // Default scopes are added automatically; add statically configured scopes for sign in.
+            AddScopes(options.Scope, this.Configuration.SignInScopes);
 
             // Set token validation parameters.
             options.TokenValidationParameters.ValidAudiences = this.Configuration.AllowedAudiences; // TODO-L: Warn if there are no valid audiences configured.
@@ -71,10 +74,12 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
     {
         var properties = new AuthenticationProperties();
         properties.RedirectUri = request.ReturnUrl;
+
+        // Default scopes are added automatically; add statically configured scopes for token requests
+        // and dynamically requested scopes from the token request.
         var scopesToRequest = new List<string>();
-        // TODO-M: In this flow, we should still include the statically configured OIDC scopes (such as "profile") otherwise
-        // the returned ID token will contain less information than from the initial login.
-        AddScopes(scopesToRequest, true, false, request.Scopes);
+        AddScopes(scopesToRequest, this.Configuration.TokenRequestScopes);
+        AddScopes(scopesToRequest, request.Scopes);
         properties.SetParameter(OpenIdConnectParameterNames.Scope, scopesToRequest);
 
         // Remember original response properties.
@@ -83,14 +88,26 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
         var oldRedirectCookies = httpContext.Response.Headers.SetCookie.ToArray();
         try
         {
-            // TODO-L: This sets the current response to redirect so we can extract the redirect URL; later on the
-            // response status and body will be replaced again with the result of the current API call but there
-            // might be a cleaner way to get the redirect URL without impacting the actual current http context
-            // (although the authentication handler does seem to only work by triggering the redirect without a
+            // TODO-L: This sets the current response to redirect so we can extract the redirect URL;
+            // later on the response status and body will be replaced again with the result of the current API call.
+            // There might be a cleaner way to get the redirect URL without impacting the actual current HTTP context,
+            // although the authentication handler does seem to only work by triggering the redirect without a
             // clean way to build the redirect URL separately, see
-            // https://github.com/dotnet/aspnetcore/blob/main/src/Security/Authentication/OpenIdConnect/src/OpenIdConnectHandler.cs#L364).
+            // https://github.com/dotnet/aspnetcore/blob/main/src/Security/Authentication/OpenIdConnect/src/OpenIdConnectHandler.cs#L364.
             await httpContext.ChallengeAsync(this.AuthenticationScheme, properties);
-            var redirectUrl = httpContext.Response.Headers.Location;
+            var redirectUrl = httpContext.Response.Headers.Location.ToString();
+            if (this.openIdConnectOptions != null && !this.openIdConnectOptions.ResponseType.Contains(OpenIdConnectResponseType.Code))
+            {
+                // Because we use ChallengeAsync to get a redirect URL and that uses the statically configured
+                // ResponseType defined in the OpenIdConnectOptions, we cannot dynamically override it
+                // to use an authorization code flow when needed: the "code" response type should already have
+                // been included in the OpenIdConnectOptions even if no access token was initially required.
+                // As a workaround, we modify the generated redirect URL directly to change the response type
+                // in case the initial sign-in did not request an authorization code flow.
+                var responseTypeWithoutCode = OpenIdConnectParameterNames.ResponseType + "=" + WebUtility.UrlEncode(this.openIdConnectOptions.ResponseType);
+                var responseTypeWithCode = OpenIdConnectParameterNames.ResponseType + "=" + WebUtility.UrlEncode($"{OpenIdConnectResponseType.Code} {this.openIdConnectOptions.ResponseType}");
+                redirectUrl = redirectUrl.Replace(responseTypeWithoutCode, responseTypeWithCode);
+            }
             var redirectCookies = httpContext.Response.Headers.SetCookie;
             return new TokenResponse { Status = TokenResponseStatus.RedirectRequired, RedirectUrl = redirectUrl, RedirectCookies = redirectCookies };
         }
@@ -103,30 +120,24 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
         }
     }
 
-    protected void AddScopes(ICollection<string> target, bool requestRefreshToken, bool includeConfiguredScopes, ICollection<string>? additionalScopes)
+    protected void AddScopes(ICollection<string> target, ICollection<string>? scopes)
     {
-        // The "openid" scope is added implicitly by middleware, add it explicitly here for use with MSAL.
-        AddScope(target, OpenIdConnectScope.OpenId);
-
-        // Only if needed and allowed, request a refresh token as part of the flow.
-        if (requestRefreshToken && this.Configuration.AllowRefreshTokens)
+        // The "openid" and "profile" scopes are added implicitly by middleware, add them explicitly here for use with MSAL.
+        foreach (var scope in OpenIdConnectScope.OpenIdProfile.Split(' '))
         {
-            AddScope(target, OpenIdConnectScope.OfflineAccess);
+            AddScope(target, scope);
         }
 
-        // Add the statically defined scopes if needed.
-        if (includeConfiguredScopes && this.Configuration.Scopes != null)
+        // Add the statically defined default scopes.
+        foreach (var scope in this.Configuration.DefaultScopes)
         {
-            foreach (var scope in this.Configuration.Scopes)
-            {
-                AddScope(target, scope);
-            }
+            AddScope(target, scope);
         }
 
         // Add the dynamically requested scopes.
-        if (additionalScopes != null)
+        if (scopes != null)
         {
-            foreach (var scope in additionalScopes)
+            foreach (var scope in scopes)
             {
                 AddScope(target, scope);
             }

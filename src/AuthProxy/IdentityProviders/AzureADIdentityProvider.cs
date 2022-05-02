@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Web;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace AuthProxy.IdentityProviders;
 
@@ -132,7 +133,9 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
             // No scopes were requested, valid.
             return;
         }
-        if (returnedScopes == null || !requestedScopes.All(scope => returnedScopes.Any(s => string.Equals(s, scope, StringComparison.OrdinalIgnoreCase))))
+        // Don't check the presence of certain scopes that are requested but not returned (e.g. "offline_access").
+        var requestedScopesToValidate = requestedScopes.Except(new[] { OpenIdConnectScope.OfflineAccess }, StringComparer.OrdinalIgnoreCase);
+        if (returnedScopes == null || !requestedScopesToValidate.All(scope => returnedScopes.Any(s => string.Equals(s, scope, StringComparison.OrdinalIgnoreCase))))
         {
             // One or more scopes that were requested were not returned, invalid.
             // Throw an MsalUiRequiredException with a custom error code to signal to the exception handler that it should trigger.
@@ -154,6 +157,10 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
             ClientId = this.Configuration.ClientId,
             ClientSecret = this.Configuration.ClientSecret,
             TenantId = this.tenantId,
+            // TODO-L: When exchanging an authorization code for an access token, the RedirectUri needs to be set to the
+            // same value as when the authorization code was requested.
+            // We build it up dynamically here but perhaps it can be stored during the initial flow and and retrieved here.
+            // See https://github.com/dotnet/aspnetcore/blob/ac39742bf152a0d2980059289822e1d3526a880a/src/Security/Authentication/OpenIdConnect/src/OpenIdConnectHandler.cs#L457.
             RedirectUri = UriHelper.BuildAbsolute(httpContext.Request.Scheme, httpContext.Request.Host, httpContext.Request.PathBase, this.LoginCallbackPath)
         });
     }

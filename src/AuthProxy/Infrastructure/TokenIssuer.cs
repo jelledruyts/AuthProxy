@@ -15,16 +15,16 @@ public class TokenIssuer
     public string Issuer { get; }
     public IList<SigningCredentials> SigningCredentials { get; } = new List<SigningCredentials>();
 
-    public TokenIssuer(TokenIssuerConfig config)
+    public TokenIssuer(AuthProxyConfig config)
     {
-        this.Audience = config.Audience;
-        this.Issuer = config.Issuer;
-        this.expiration = config.Expiration;
-        if (config.SigningCertificates.Count == 0)
+        this.Audience = config.Backend.Audience;
+        this.Issuer = config.Authentication.TokenIssuer.Issuer;
+        this.expiration = config.Authentication.TokenIssuer.Expiration;
+        if (config.Authentication.TokenIssuer.SigningCertificates.Count == 0)
         {
             throw new ArgumentOutOfRangeException("There are no signing certificates configured for the token issuer.");
         }
-        foreach (var certificateConfig in config.SigningCertificates)
+        foreach (var certificateConfig in config.Authentication.TokenIssuer.SigningCertificates)
         {
             ArgumentNullException.ThrowIfNull(certificateConfig.Path);
             var certificate = new X509Certificate2(certificateConfig.Path, certificateConfig.Password);

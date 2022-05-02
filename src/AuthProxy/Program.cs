@@ -17,7 +17,7 @@ builder.Configuration.Bind("AuthProxy", authProxyConfig);
 builder.Services.AddSingleton<AuthProxyConfig>(authProxyConfig);
 
 // Construct the token issuer.
-var tokenIssuer = new TokenIssuer(authProxyConfig.Authentication.TokenIssuer);
+var tokenIssuer = new TokenIssuer(authProxyConfig);
 builder.Services.AddSingleton<TokenIssuer>(tokenIssuer);
 
 // Construct identity providers.
