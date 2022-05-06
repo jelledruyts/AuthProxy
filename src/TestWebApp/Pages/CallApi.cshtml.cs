@@ -1,8 +1,10 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Primitives;
 
 namespace TestWebApp.Pages;
 
@@ -20,9 +22,11 @@ public class CallApiModel : PageModel
     public string? TokenRequestScopes { get; set; }
     [BindProperty]
     public Actor TokenRequestActor { get; set; } = Actor.User;
+    [BindProperty]
+    public string ForwardCallDestinationUrl { get; set; } = "https://graph.microsoft.com/v1.0/me";
     public string? InfoMessage { get; set; }
     public string? GetTokenResult { get; set; }
-    public string? DirectCallResult { get; set; }
+    public string? ForwardCallResult { get; set; }
 
     public CallApiModel(ILogger<IndexModel> logger, IHttpClientFactory httpClientFactory, IConfiguration configuration)
     {
@@ -37,11 +41,12 @@ public class CallApiModel : PageModel
     {
         // If the return URL was invoked with query string parameters to remember the original
         // request, re-populate the form with those original values.
-        this.InfoMessage = this.Request.Query[nameof(TokenRequest.Profile)].Any() || this.Request.Query[nameof(TokenRequest.IdentityProvider)].Any() ? "We had to sign you back in first. Please retry the request." : null;
-        this.TokenRequestProfile = this.Request.Query[nameof(TokenRequest.Profile)].FirstOrDefault() ?? this.TokenRequestProfile;
-        this.TokenRequestIdentityProvider = this.Request.Query[nameof(TokenRequest.IdentityProvider)].FirstOrDefault() ?? this.TokenRequestIdentityProvider;
-        this.TokenRequestScopes = this.Request.Query[nameof(TokenRequest.Scopes)].FirstOrDefault() ?? this.TokenRequestScopes;
-        this.TokenRequestActor = this.Request.Query[nameof(TokenRequest.Actor)].FirstOrDefault() != null ? Enum.Parse<Actor>(this.Request.Query[nameof(TokenRequest.Actor)].FirstOrDefault()!) : this.TokenRequestActor;
+        this.InfoMessage = this.Request.Query[nameof(TokenRequestProfile)].Any() || this.Request.Query[nameof(TokenRequestIdentityProvider)].Any() || this.Request.Query[nameof(ForwardCallDestinationUrl)].Any() ? "We had to sign you back in first. Please retry the request." : null;
+        this.TokenRequestProfile = this.Request.Query[nameof(TokenRequestProfile)].FirstOrDefault() ?? this.TokenRequestProfile;
+        this.TokenRequestIdentityProvider = this.Request.Query[nameof(TokenRequestIdentityProvider)].FirstOrDefault() ?? this.TokenRequestIdentityProvider;
+        this.TokenRequestScopes = this.Request.Query[nameof(TokenRequestScopes)].FirstOrDefault() ?? this.TokenRequestScopes;
+        this.TokenRequestActor = this.Request.Query[nameof(TokenRequestActor)].FirstOrDefault() != null ? Enum.Parse<Actor>(this.Request.Query[nameof(TokenRequestActor)].FirstOrDefault()!) : this.TokenRequestActor;
+        this.ForwardCallDestinationUrl = this.Request.Query[nameof(ForwardCallDestinationUrl)].FirstOrDefault() ?? this.ForwardCallDestinationUrl;
     }
 
     public async Task<IActionResult> OnPostGetToken()
@@ -51,8 +56,13 @@ public class CallApiModel : PageModel
             // Prepare the token request for the Auth Proxy API.
             var request = new TokenRequest
             {
-                // If a redirect would be necessary, return back to this page with additional query parameters to remember the original request values.
-                ReturnUrl = this.Url.Page("CallApi", null, new { Profile = this.TokenRequestProfile, IdentityProvider = this.TokenRequestIdentityProvider, Scopes = this.TokenRequestScopes }, this.HttpContext.Request.Scheme, this.HttpContext.Request.Host.Value)
+                // If a redirect would be necessary, make the redirect URL return back to this page with additional query parameters to remember the original request values.
+                ReturnUrl = this.Url.Page("CallApi", null, new
+                {
+                    TokenRequestProfile = this.TokenRequestProfile,
+                    TokenRequestIdentityProvider = this.TokenRequestIdentityProvider,
+                    TokenRequestScopes = this.TokenRequestScopes
+                }, this.HttpContext.Request.Scheme, this.HttpContext.Request.Host.Value)
             };
             if (!string.IsNullOrWhiteSpace(this.TokenRequestProfile))
             {
@@ -73,6 +83,7 @@ public class CallApiModel : PageModel
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authorizationValue);
 
             // Perform the API call towards Auth Proxy.
+            // TODO-M: Pass API endpoints as request headers so app doesn't have to hard code them?
             var responseMessage = await httpClient.PostAsync("/.auth/api/token", JsonContent.Create(request));
             var responseBody = await responseMessage.Content.ReadAsStringAsync();
 
@@ -113,18 +124,60 @@ public class CallApiModel : PageModel
         return Page();
     }
 
-    public async Task OnPostDirectCall()
+    public async Task<IActionResult> OnPostForwardCall()
     {
         try
         {
             var httpClient = this.httpClientFactory.CreateClient();
-            // this.GraphResult = await httpClient.GetStringAsync("https://graph.microsoft.com/v1.0/users/me");
-            this.DirectCallResult = await httpClient.GetStringAsync("http://ipinfo.io/ip");
+            httpClient.BaseAddress = this.authProxyBaseUrl;
+            httpClient.DefaultRequestHeaders.Add("X-AuthProxy-Destination", this.ForwardCallDestinationUrl);
+            // If a redirect would be necessary, make the redirect URL return back to this page with additional query parameters to remember the original request values.
+            httpClient.DefaultRequestHeaders.Add("X-AuthProxy-ReturnUrl", this.Url.Page("CallApi", null, new { ForwardCallDestinationUrl = this.ForwardCallDestinationUrl }, this.HttpContext.Request.Scheme, this.HttpContext.Request.Host.Value));
+            var authorizationValue = this.HttpContext.Request.Headers["X-AuthProxy-API-token"].FirstOrDefault();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authorizationValue);
+            // TODO-M: Pass API endpoints as request headers so app doesn't have to hard code them?
+            var responseMessage = await httpClient.GetAsync("/.auth/api/forward");
+            var responseBody = await responseMessage.Content.ReadAsStringAsync();
+
+            // Check the API response.
+            if (responseMessage.StatusCode == HttpStatusCode.NetworkAuthenticationRequired)
+            {
+                // The request could not be forwarded, check response headers for status.
+                if (responseMessage.Headers.Contains("X-AuthProxy-Status"))
+                {
+                    var status = Enum.Parse<TokenResponseStatus>(responseMessage.Headers.GetValues("X-AuthProxy-Status").First());
+                    if (status == TokenResponseStatus.RedirectRequired)
+                    {
+                        // The token request could not be completed, user interaction via a redirect was required.
+                        var redirectUrl = responseMessage.Headers.GetValues("X-AuthProxy-RedirectUrl").FirstOrDefault();
+                        var redirectCookies = responseMessage.Headers.GetValues("X-AuthProxy-RedirectCookies");
+                        if (redirectCookies != null)
+                        {
+                            // The redirect flow requires additional cookies to be set, return them back to the browser.
+                            Response.Headers.SetCookie = new StringValues(redirectCookies.ToArray());
+                        }
+
+                        // Issue a redirect to the requested URL.
+                        return Redirect(redirectUrl!);
+                    }
+                }
+            }
+            else if (!responseMessage.IsSuccessStatusCode)
+            {
+                // Something went wrong while calling the API itself.
+                this.ForwardCallResult = $"Error {responseMessage.StatusCode.ToString()}. {responseBody}";
+            }
+            else
+            {
+                // The request was forwarded successfully, output the response body.
+                this.ForwardCallResult = responseBody;
+            }
         }
         catch (Exception exc)
         {
-            this.DirectCallResult = exc.ToString();
+            this.ForwardCallResult = exc.ToString();
         }
+        return Page();
     }
 
     // Local copy of the models (ultimately this could live in a client SDK along with helpers).

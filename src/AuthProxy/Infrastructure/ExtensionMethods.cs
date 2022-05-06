@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Security.Claims;
 
 namespace AuthProxy.Infrastructure;
@@ -53,5 +54,23 @@ public static class ExtensionMethods
             principal.AddIdentity(identity);
         }
         return identity;
+    }
+
+    public static string? GetValueOrDefault(this HttpHeaders headers, string name)
+    {
+        if (headers.Contains(name))
+        {
+            return headers.GetValues(name).First();
+        }
+        return null;
+    }
+
+    public static string? GetValueOrDefault(this IHeaderDictionary headers, string name)
+    {
+        if (headers.ContainsKey(name))
+        {
+            return headers[name];
+        }
+        return null;
     }
 }

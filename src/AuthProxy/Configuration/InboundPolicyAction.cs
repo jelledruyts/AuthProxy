@@ -1,6 +1,6 @@
 namespace AuthProxy.Configuration;
 
-public enum PolicyAction
+public enum InboundPolicyAction
 {
     None, // Not configured
     Allow, // Allow access

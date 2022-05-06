@@ -3,39 +3,28 @@ using System.Net.Http.Headers;
 using System.Text;
 using AuthProxy.Configuration;
 using Microsoft.AspNetCore.Authentication;
-using Yarp.ReverseProxy.Forwarder;
 
-namespace AuthProxy.Infrastructure;
+namespace AuthProxy.Infrastructure.ReverseProxy;
 
-public class YarpHttpTransformer : HttpTransformer
+public class BackendAppYarpHttpTransformer : BaseHttpTransformer
 {
     private readonly string authProxyCookieName;
     private readonly HostPolicy backendHostPolicy;
     private readonly string? backendHostName;
     private readonly TokenIssuer tokenIssuer;
 
-    public YarpHttpTransformer(string authProxyCookieName, HostPolicy backendHostPolicy, string? backendHostName, TokenIssuer tokenIssuer)
+    public BackendAppYarpHttpTransformer(AuthProxyConfig authProxyConfig, TokenIssuer tokenIssuer)
     {
-        this.authProxyCookieName = authProxyCookieName;
-        this.backendHostPolicy = backendHostPolicy;
-        this.backendHostName = backendHostName;
+        this.authProxyCookieName = authProxyConfig.Authentication.Cookie.Name;
+        this.backendHostPolicy = authProxyConfig.Backend.HostPolicy;
+        this.backendHostName = authProxyConfig.Backend.HostName;
         this.tokenIssuer = tokenIssuer;
     }
 
-    /// <summary>
-    /// A callback that is invoked prior to sending the proxied request. All HttpRequestMessage fields are
-    /// initialized except RequestUri, which will be initialized after the callback if no value is provided.
-    /// See <see cref="RequestUtilities.MakeDestinationAddress(string, PathString, QueryString)"/> for constructing a custom request Uri.
-    /// The string parameter represents the destination URI prefix that should be used when constructing the RequestUri.
-    /// The headers are copied by the base implementation, excluding some protocol headers like HTTP/2 pseudo headers (":authority").
-    /// </summary>
-    /// <param name="httpContext">The incoming request.</param>
-    /// <param name="proxyRequest">The outgoing proxy request.</param>
-    /// <param name="destinationPrefix">The uri prefix for the selected destination server which can be used to create the RequestUri.</param>
     public override async ValueTask TransformRequestAsync(HttpContext httpContext, HttpRequestMessage proxyRequest, string destinationPrefix)
     {
         // Perform default behavior.
-        await HttpTransformer.Default.TransformRequestAsync(httpContext, proxyRequest, destinationPrefix);
+        await base.TransformRequestAsync(httpContext, proxyRequest, destinationPrefix);
 
         // Remove auth cookie in the request towards the app as it's internal to the proxy.
         RemoveCookie(proxyRequest, this.authProxyCookieName);
@@ -47,7 +36,7 @@ public class YarpHttpTransformer : HttpTransformer
             if (backendAppIdentity != null)
             {
                 // TODO: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
-                // For example: proxyRequest.Headers.Add("X-Auth-Token", customPrefix + backendAppToken + customSuffix);
+                // For example: proxyRequest.Headers.Add("X-AuthProxy-Token", customPrefix + backendAppToken + customSuffix);
                 var backendAppToken = this.tokenIssuer.CreateToken(backendAppIdentity);
                 proxyRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", backendAppToken);
             }
@@ -56,8 +45,9 @@ public class YarpHttpTransformer : HttpTransformer
         var roundTripIdentity = httpContext.User.GetOrCreateIdentity(Constants.AuthenticationTypes.RoundTrip);
         // TODO: Encrypt the information rather than package it up in a (signed but readable) JWT.
         // TODO: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
+        // TODO-M: Set "X-AuthProxy-API-Header-Name" and "X-AuthProxy-API-Header-Value" (including "Bearer") so that app needs to only echo that.
         var roundTripToken = this.tokenIssuer.CreateToken(roundTripIdentity, TokenIssuer.ApiAudience);
-        proxyRequest.Headers.Add("X-AuthProxy-API-token", roundTripToken);
+        proxyRequest.Headers.Add(Defaults.HeaderNameApiToken, roundTripToken);
 
         // Determine how to set the outgoing Host header.
         if (this.backendHostPolicy == HostPolicy.UseHostFromBackendApp)
@@ -74,56 +64,33 @@ public class YarpHttpTransformer : HttpTransformer
         }
     }
 
-    /// <summary>
-    /// A callback that is invoked when the proxied response is received. The status code and reason phrase will be copied
-    /// to the HttpContext.Response before the callback is invoked, but may still be modified there. The headers will be
-    /// copied to HttpContext.Response.Headers by the base implementation, excludes certain protocol headers like
-    /// `Transfer-Encoding: chunked`.
-    /// </summary>
-    /// <param name="httpContext">The incoming request.</param>
-    /// <param name="proxyResponse">The response from the destination. This can be null if the destination did not respond.</param>
-    /// <returns>A bool indicating if the response should be proxied to the client or not. A derived implementation 
-    /// that returns false may send an alternate response inline or return control to the caller for it to retry, respond, 
-    /// etc.</returns>
     public override async ValueTask<bool> TransformResponseAsync(HttpContext httpContext, HttpResponseMessage? proxyResponse)
     {
         // The app can communicate back to the proxy with response HTTP headers, which can then take action.
         // Only do this if there is no logical better alternative, like a direct inbound URL from the app (e.g. "/.auth/logout").
-        if (proxyResponse != null && proxyResponse.Headers.Contains("X-Auth-Action"))
+        if (proxyResponse != null)
         {
-            var action = proxyResponse.Headers.GetValues("X-Auth-Action").First();
-            httpContext.Response.Clear();
-            if (action == "logout")
+            var action = proxyResponse.Headers.GetValueOrDefault(Defaults.HeaderNameAction);
+            if (string.Equals(action, "logout", StringComparison.OrdinalIgnoreCase))
             {
-                var returnUrl = "/";
+                httpContext.Response.Clear();
+                var returnUrl = proxyResponse.Headers.GetValueOrDefault(Defaults.HeaderNameReturnUrl) ?? "/";
                 await httpContext.SignOutAsync(new AuthenticationProperties { RedirectUri = returnUrl });
                 httpContext.Response.StatusCode = (int)HttpStatusCode.Found;
                 httpContext.Response.Headers.Location = returnUrl;
+                return false;
             }
-            return false;
         }
+
         // Perform default behavior.
-        var shouldProxy = await HttpTransformer.Default.TransformResponseAsync(httpContext, proxyResponse);
+        var shouldProxy = await base.TransformResponseAsync(httpContext, proxyResponse);
 
         if (shouldProxy)
         {
-            // Add custom headers on the response back to the client.
+            // Optionally add custom headers on the response back to the client.
             // This should generally be avoided though as the proxy is supposed to be transparent to the client.
-            // httpContext.Response.Headers.Add("X-Auth-Response", "OK");
         }
         return shouldProxy;
-    }
-
-    /// <summary>
-    /// A callback that is invoked after the response body to modify trailers, if supported. The trailers will be
-    /// copied to the HttpContext.Response by the base implementation.
-    /// </summary>
-    /// <param name="httpContext">The incoming request.</param>
-    /// <param name="proxyResponse">The response from the destination.</param>
-    public override ValueTask TransformResponseTrailersAsync(HttpContext httpContext, HttpResponseMessage proxyResponse)
-    {
-        // Perform default behavior.
-        return HttpTransformer.Default.TransformResponseTrailersAsync(httpContext, proxyResponse);
     }
 
     private static void RemoveCookie(HttpRequestMessage proxyRequest, string cookieNamePrefix)

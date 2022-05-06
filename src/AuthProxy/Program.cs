@@ -5,6 +5,7 @@ using AuthProxy;
 using AuthProxy.Configuration;
 using AuthProxy.IdentityProviders;
 using AuthProxy.Infrastructure;
+using AuthProxy.Infrastructure.ReverseProxy;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
@@ -26,7 +27,10 @@ builder.Services.AddSingleton<IdentityProviderFactory>(identityProviderFactory);
 
 // Add YARP services.
 builder.Services.AddHttpForwarder();
-builder.Services.AddSingleton<YarpRequestHandler>();
+builder.Services.AddSingleton<BackendAppYarpHttpTransformer>();
+builder.Services.AddSingleton<BackendAppYarpRequestHandler>();
+builder.Services.AddSingleton<ExternalServiceYarpHttpTransformer>();
+builder.Services.AddSingleton<ExternalServiceYarpRequestHandler>();
 
 // TODO: Set up ASP.NET Core Data Protection to share encryption keys etc across multiple instances.
 // See https://docs.microsoft.com/en-us/aspnet/core/security/data-protection/configuration/overview.
@@ -113,7 +117,9 @@ app.Map(logoutPath, async httpContext =>
 });
 
 // Map everything else to YARP.
-var handler = app.Services.GetRequiredService<YarpRequestHandler>();
-app.Map("/{**catch-all}", handler.HandleRequest);
+var externalServicehandler = app.Services.GetRequiredService<ExternalServiceYarpRequestHandler>();
+app.Map(authProxyConfig.Api.BasePath + "/forward", externalServicehandler.HandleRequest);
+var backendAppHandler = app.Services.GetRequiredService<BackendAppYarpRequestHandler>();
+app.Map("/{**catch-all}", backendAppHandler.HandleRequest);
 
 app.Run();

@@ -57,19 +57,18 @@
     <pre class="alert alert-info" style="white-space: pre-wrap;"><code>@Model.GetTokenResult</code></pre>
 }
 
-<h2 class="mt-4">Direct Call</h2>
+<h2 class="mt-4">Forward Call</h2>
 
-<p class="alert alert-warning">
-    <b>Experimental!</b> If the backend app has an HTTP proxy set to point at Auth Proxy, it will tunnel its outbound
-    traffic (which is intended for the real API it's trying to reach) through Auth Proxy which can then auto-attach tokens.
-</p>
-
-<form method="post" asp-page-handler="DirectCall">
+<form method="post" asp-page-handler="ForwardCall">
+    <div class="mb-3">
+        <label for="forwardCallDestinationUrl" class="form-label">Destination URL</label>
+        <input type="text" class="form-control" id="forwardCallDestinationUrl" name="forwardCallDestinationUrl" value="@Model.ForwardCallDestinationUrl">
+    </div>
     <button type="submit" class="btn btn-primary">Submit</button>
 </form>
 
-@if (Model.DirectCallResult != null)
+@if (Model.ForwardCallResult != null)
 {
     <h3 class="mt-3">Result</h3>
-    <pre class="alert alert-info" style="white-space: pre-wrap;"><code>@Model.DirectCallResult</code></pre>
+    <pre class="alert alert-info" style="white-space: pre-wrap;"><code>@Model.ForwardCallResult</code></pre>
 }

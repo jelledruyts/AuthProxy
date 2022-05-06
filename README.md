@@ -155,8 +155,8 @@ Communication between the proxy and the backend app can be secured.
 
 Some decisions aren't static or configuration-driven, for example to trigger authentication or MFA based on business logic. The app can then instruct the proxy to perform certain functionality, for example by returning well-defined HTTP headers to trigger an authentication challenge:
 
-- `X-Auth-Action: challenge`
-- `X-Auth-ReturnUrl: /foo/bar`
+- `X-AuthProxy-Action: challenge`
+- `X-AuthProxy-ReturnUrl: /foo/bar`
 
 The proxy will see these headers coming back on the HTTP response and take appropriate action, for example by building the redirect URL for the IdP in this case and returning that as the HTTP response instead.
 

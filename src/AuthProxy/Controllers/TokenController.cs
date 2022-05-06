@@ -21,7 +21,7 @@ public class TokenController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<TokenResponse>> GetTokenAsync(TokenRequest request)
+    public async Task<ActionResult<TokenResponse>> GetTokenAsync(ApiTokenRequest request)
     {
         if (!string.IsNullOrWhiteSpace(request.Profile))
         {
