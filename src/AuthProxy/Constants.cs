@@ -22,4 +22,15 @@ public static class Constants
             public const string IdentityProviderType = "idp.type";
         }
     }
+
+    public static class HttpHeaders
+    {
+        public const string Bearer = "Bearer";
+    }
+
+    public static class ApiPaths
+    {
+        public const string Token = "token";
+        public const string Forward = "forward";
+    }
 }

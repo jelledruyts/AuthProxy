@@ -36,9 +36,10 @@ public class ExternalServiceYarpRequestHandler : BaseYarpRequestHandler
         httpContext.Request.Headers.Remove(Defaults.HeaderNameDestination); // Remove the header from the outgoing request.
         if (destinationUrl == null)
         {
-            // No destination URL was requested, simply forward the request without further processing.
-            return true;
+            // No destination URL was requested, reject the request.
+            return await ForbiddenAsync(httpContext);
         }
+        httpContext.Items[ExternalServiceYarpHttpTransformer.ContextItemKeyRequestUri] = new Uri(destinationUrl);
 
         // Look for a matching outbound policy.
         var outboundPolicy = GetMatchingOutboundPolicy(destinationUrl);
@@ -76,7 +77,6 @@ public class ExternalServiceYarpRequestHandler : BaseYarpRequestHandler
         if (token.Status == TokenResponseStatus.Succeeded)
         {
             // The required token was acquired, pass information to the HTTP transformer to include it on the outbound call.
-            httpContext.Items[ExternalServiceYarpHttpTransformer.ContextItemKeyRequestUri] = new Uri(destinationUrl);
             httpContext.Items[ExternalServiceYarpHttpTransformer.ContextItemKeyOutboundPolicyAction] = outboundPolicy.Action;
             httpContext.Items[ExternalServiceYarpHttpTransformer.ContextItemKeyToken] = token.Token;
             return true;

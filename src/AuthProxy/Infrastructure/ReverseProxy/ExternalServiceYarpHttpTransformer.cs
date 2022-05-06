@@ -16,12 +16,15 @@ public class ExternalServiceYarpHttpTransformer : BaseHttpTransformer
 
         // Set the target URI to the requested destination.
         proxyRequest.RequestUri = (Uri)httpContext.Items[ContextItemKeyRequestUri]!;
-        var outboundPolicyAction = (OutboundPolicyAction)httpContext.Items[ContextItemKeyOutboundPolicyAction]!;
-        var token = (string)httpContext.Items[ContextItemKeyToken]!;
-        if (outboundPolicyAction == OutboundPolicyAction.AttachBearerToken)
+        if (httpContext.Items.ContainsKey(ContextItemKeyOutboundPolicyAction))
         {
-            // Attach the bearer token to the outgoing request.
-            proxyRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var outboundPolicyAction = (OutboundPolicyAction)httpContext.Items[ContextItemKeyOutboundPolicyAction]!;
+            if (outboundPolicyAction == OutboundPolicyAction.AttachBearerToken)
+            {
+                // Attach the bearer token to the outgoing request.
+                var token = (string)httpContext.Items[ContextItemKeyToken]!;
+                proxyRequest.Headers.Authorization = new AuthenticationHeaderValue(Constants.HttpHeaders.Bearer, token);
+            }
         }
     }
 }

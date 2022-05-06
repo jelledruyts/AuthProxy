@@ -1,5 +1,6 @@
 using AuthProxy.Configuration;
 using AuthProxy.IdentityProviders;
+using AuthProxy.Infrastructure;
 using AuthProxy.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AuthProxy.Controllers;
 
 [ApiController]
-[Route("[basepath]/[controller]")]
+[Route(ApiRoutingConvention.Placeholder + "/" + Constants.ApiPaths.Token)]
 [Authorize(AuthenticationSchemes = Constants.AuthenticationSchemes.AuthProxy)]
 public class TokenController : ControllerBase
 {

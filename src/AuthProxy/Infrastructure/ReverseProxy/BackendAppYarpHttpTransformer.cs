@@ -3,21 +3,18 @@ using System.Net.Http.Headers;
 using System.Text;
 using AuthProxy.Configuration;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Net.Http.Headers;
 
 namespace AuthProxy.Infrastructure.ReverseProxy;
 
 public class BackendAppYarpHttpTransformer : BaseHttpTransformer
 {
-    private readonly string authProxyCookieName;
-    private readonly HostPolicy backendHostPolicy;
-    private readonly string? backendHostName;
+    private readonly AuthProxyConfig authProxyConfig;
     private readonly TokenIssuer tokenIssuer;
 
     public BackendAppYarpHttpTransformer(AuthProxyConfig authProxyConfig, TokenIssuer tokenIssuer)
     {
-        this.authProxyCookieName = authProxyConfig.Authentication.Cookie.Name;
-        this.backendHostPolicy = authProxyConfig.Backend.HostPolicy;
-        this.backendHostName = authProxyConfig.Backend.HostName;
+        this.authProxyConfig = authProxyConfig;
         this.tokenIssuer = tokenIssuer;
     }
 
@@ -27,7 +24,7 @@ public class BackendAppYarpHttpTransformer : BaseHttpTransformer
         await base.TransformRequestAsync(httpContext, proxyRequest, destinationPrefix);
 
         // Remove auth cookie in the request towards the app as it's internal to the proxy.
-        RemoveCookie(proxyRequest, this.authProxyCookieName);
+        RemoveCookie(proxyRequest, this.authProxyConfig.Authentication.Cookie.Name);
 
         if (httpContext.User.Identity?.IsAuthenticated == true)
         {
@@ -38,25 +35,29 @@ public class BackendAppYarpHttpTransformer : BaseHttpTransformer
                 // TODO: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
                 // For example: proxyRequest.Headers.Add("X-AuthProxy-Token", customPrefix + backendAppToken + customSuffix);
                 var backendAppToken = this.tokenIssuer.CreateToken(backendAppIdentity);
-                proxyRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", backendAppToken);
+                proxyRequest.Headers.Authorization = new AuthenticationHeaderValue(Constants.HttpHeaders.Bearer, backendAppToken);
             }
         }
 
         var roundTripIdentity = httpContext.User.GetOrCreateIdentity(Constants.AuthenticationTypes.RoundTrip);
         // TODO: Encrypt the information rather than package it up in a (signed but readable) JWT.
         // TODO: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
-        // TODO-M: Set "X-AuthProxy-API-Header-Name" and "X-AuthProxy-API-Header-Value" (including "Bearer") so that app needs to only echo that.
         var roundTripToken = this.tokenIssuer.CreateToken(roundTripIdentity, TokenIssuer.ApiAudience);
-        proxyRequest.Headers.Add(Defaults.HeaderNameApiToken, roundTripToken);
+        proxyRequest.Headers.Add(Defaults.HeaderNameApiAuthorizationHeaderName, HeaderNames.Authorization);
+        proxyRequest.Headers.Add(Defaults.HeaderNameApiAuthorizationHeaderValue, $"{Constants.HttpHeaders.Bearer} {roundTripToken}");
+
+        // Inject headers containing the callback API paths to avoid that the backend app has to hard-code these.
+        proxyRequest.Headers.Add(Defaults.HeaderNameApiPathToken, this.authProxyConfig.Api.BasePath + "/" + Constants.ApiPaths.Token);
+        proxyRequest.Headers.Add(Defaults.HeaderNameApiPathForward, this.authProxyConfig.Api.BasePath + "/" + Constants.ApiPaths.Forward);
 
         // Determine how to set the outgoing Host header.
-        if (this.backendHostPolicy == HostPolicy.UseHostFromBackendApp)
+        if (this.authProxyConfig.Backend.HostPolicy == HostPolicy.UseHostFromBackendApp)
         {
             proxyRequest.Headers.Host = null; // Suppress the original request header, use the one from the destination Uri.
         }
-        else if (this.backendHostPolicy == HostPolicy.UseConfiguredHostName)
+        else if (this.authProxyConfig.Backend.HostPolicy == HostPolicy.UseConfiguredHostName)
         {
-            proxyRequest.Headers.Host = this.backendHostName; // Use the configured host name.
+            proxyRequest.Headers.Host = this.authProxyConfig.Backend.HostName; // Use the configured host name.
         }
         else
         {

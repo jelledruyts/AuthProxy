@@ -118,7 +118,7 @@ app.Map(logoutPath, async httpContext =>
 
 // Map everything else to YARP.
 var externalServicehandler = app.Services.GetRequiredService<ExternalServiceYarpRequestHandler>();
-app.Map(authProxyConfig.Api.BasePath + "/forward", externalServicehandler.HandleRequest);
+app.Map(authProxyConfig.Api.BasePath + "/" + Constants.ApiPaths.Forward, externalServicehandler.HandleRequest);
 var backendAppHandler = app.Services.GetRequiredService<BackendAppYarpRequestHandler>();
 app.Map("/{**catch-all}", backendAppHandler.HandleRequest);
 

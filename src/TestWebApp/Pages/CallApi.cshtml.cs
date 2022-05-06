@@ -79,12 +79,13 @@ public class CallApiModel : PageModel
             // Retrieve the authorization token that Auth Proxy provided to call back into its own API.
             var httpClient = this.httpClientFactory.CreateClient();
             httpClient.BaseAddress = this.authProxyBaseUrl;
-            var authorizationValue = this.HttpContext.Request.Headers["X-AuthProxy-API-token"].FirstOrDefault();
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authorizationValue);
+            var authorizationHeaderName = this.HttpContext.Request.Headers["X-AuthProxy-API-AuthorizationHeader-Name"].First();
+            var authorizationHeaderValue = this.HttpContext.Request.Headers["X-AuthProxy-API-AuthorizationHeader-Value"].First();
+            httpClient.DefaultRequestHeaders.Add(authorizationHeaderName, authorizationHeaderValue);
 
             // Perform the API call towards Auth Proxy.
-            // TODO-M: Pass API endpoints as request headers so app doesn't have to hard code them?
-            var responseMessage = await httpClient.PostAsync("/.auth/api/token", JsonContent.Create(request));
+            var tokenApiPath = this.HttpContext.Request.Headers["X-AuthProxy-API-Path-Token"].First(); // Retrieve the path to the Token API from the headers to avoid hard-coding it.
+            var responseMessage = await httpClient.PostAsync(tokenApiPath, JsonContent.Create(request));
             var responseBody = await responseMessage.Content.ReadAsStringAsync();
 
             // Check the API response.
@@ -130,13 +131,14 @@ public class CallApiModel : PageModel
         {
             var httpClient = this.httpClientFactory.CreateClient();
             httpClient.BaseAddress = this.authProxyBaseUrl;
-            httpClient.DefaultRequestHeaders.Add("X-AuthProxy-Destination", this.ForwardCallDestinationUrl);
             // If a redirect would be necessary, make the redirect URL return back to this page with additional query parameters to remember the original request values.
             httpClient.DefaultRequestHeaders.Add("X-AuthProxy-ReturnUrl", this.Url.Page("CallApi", null, new { ForwardCallDestinationUrl = this.ForwardCallDestinationUrl }, this.HttpContext.Request.Scheme, this.HttpContext.Request.Host.Value));
-            var authorizationValue = this.HttpContext.Request.Headers["X-AuthProxy-API-token"].FirstOrDefault();
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authorizationValue);
-            // TODO-M: Pass API endpoints as request headers so app doesn't have to hard code them?
-            var responseMessage = await httpClient.GetAsync("/.auth/api/forward");
+            var authorizationHeaderName = this.HttpContext.Request.Headers["X-AuthProxy-API-AuthorizationHeader-Name"].First();
+            var authorizationHeaderValue = this.HttpContext.Request.Headers["X-AuthProxy-API-AuthorizationHeader-Value"].First();
+            httpClient.DefaultRequestHeaders.Add(authorizationHeaderName, authorizationHeaderValue);
+            httpClient.DefaultRequestHeaders.Add("X-AuthProxy-Destination", this.ForwardCallDestinationUrl);
+            var forwardApiPath = this.HttpContext.Request.Headers["X-AuthProxy-API-Path-Forward"].First(); // Retrieve the path to the Forward API from the headers to avoid hard-coding it.
+            var responseMessage = await httpClient.GetAsync(forwardApiPath);
             var responseBody = await responseMessage.Content.ReadAsStringAsync();
 
             // Check the API response.
