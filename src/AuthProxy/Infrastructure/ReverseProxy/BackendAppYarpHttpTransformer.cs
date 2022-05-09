@@ -36,6 +36,7 @@ public class BackendAppYarpHttpTransformer : BaseHttpTransformer
                 // For example: proxyRequest.Headers.Add("X-AuthProxy-Token", customPrefix + backendAppToken + customSuffix);
                 var backendAppToken = this.tokenIssuer.CreateToken(backendAppIdentity);
                 proxyRequest.Headers.Authorization = new AuthenticationHeaderValue(Constants.HttpHeaders.Bearer, backendAppToken);
+                // TODO: Depending on configuration, forward individual (selected) claims as HTTP headers so the app doesn't even need to parse tokens.
             }
         }
 
@@ -43,12 +44,14 @@ public class BackendAppYarpHttpTransformer : BaseHttpTransformer
         // TODO: Encrypt the information rather than package it up in a (signed but readable) JWT.
         // TODO: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
         var roundTripToken = this.tokenIssuer.CreateToken(roundTripIdentity, TokenIssuer.ApiAudience);
-        proxyRequest.Headers.Add(Defaults.HeaderNameApiAuthorizationHeaderName, HeaderNames.Authorization);
-        proxyRequest.Headers.Add(Defaults.HeaderNameApiAuthorizationHeaderValue, $"{Constants.HttpHeaders.Bearer} {roundTripToken}");
+        proxyRequest.Headers.Add(Defaults.HeaderNameCallbackAuthorizationHeaderName, HeaderNames.Authorization);
+        proxyRequest.Headers.Add(Defaults.HeaderNameCallbackAuthorizationHeaderValue, $"{Constants.HttpHeaders.Bearer} {roundTripToken}");
 
         // Inject headers containing the callback API paths to avoid that the backend app has to hard-code these.
-        proxyRequest.Headers.Add(Defaults.HeaderNameApiPathToken, this.authProxyConfig.Api.BasePath + "/" + Constants.ApiPaths.Token);
-        proxyRequest.Headers.Add(Defaults.HeaderNameApiPathForward, this.authProxyConfig.Api.BasePath + "/" + Constants.ApiPaths.Forward);
+        // TODO: Make configurable if and how to pass this information; for example a configuration setting with the HTTP header name,
+        // in which case null or an empty string disables sending that information.
+        proxyRequest.Headers.Add(Defaults.HeaderNameCallbackTokenEndpoint, this.authProxyConfig.Api.BasePath + "/" + Constants.ApiPaths.Token);
+        proxyRequest.Headers.Add(Defaults.HeaderNameCallbackForwardEndpoint, this.authProxyConfig.Api.BasePath + "/" + Constants.ApiPaths.Forward);
 
         // Determine how to set the outgoing Host header.
         if (this.authProxyConfig.Backend.HostPolicy == HostPolicy.UseHostFromBackendApp)

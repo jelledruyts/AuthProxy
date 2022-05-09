@@ -1,80 +1,182 @@
 # Auth Proxy
 
-This project intends to remove identity complexity from application developers as much as possible, and instead deal with authentication flows, HTTP redirects, authentication cookies, token acquisition and caching, etc. in a completely separate process which sits in front of the app as a reverse proxy. This allows the application to offload complexity to an independent layer which embodies best practices and can be updated as identity standards and patterns evolve. The application itself then only needs to work through very simple native HTTP constructs (where possible) or HTTP API's (where necessary) to receive and request identity-related information.
+This project intends to remove identity complexity around authentication and authorization as much as possible from application developers, and instead encapsulate identity protocols, authentication flows, authentication cookies, token acquisition and caching, ... in a completely separate process which sits in front of the app as a reverse proxy. This allows the application to offload those concerns to an independent layer which embodies best practices and which can be updated separately as identity standards and patterns evolve. The application itself then only needs to work through simple native HTTP constructs and API's to receive and request identity-related information from the proxy.
+
+## How Does It Work?
+
+The proxy is driven completely by [configuration](#configuration). To get started, you declare one or more [Identity Providers (IdPs)](#identity-providers) with the typical details like its URL, which protocol it uses (such as OpenID Connect, OAuth 2.0, SAML 2.0 or WS-Federation), and protocol-specific values such as a client ID and client secret, scopes, allowed token audiences, ... Where it makes sense (for example to make use of vendor-specific features), you can also configure the specific *type* of IdP instead of the protocol (for example, declare that it's [Azure Active Directory](https://docs.microsoft.com/azure/active-directory/fundamentals/active-directory-whatis) or [Auth0](https://auth0.com/)).
+
+### Logging In
+
+Now when you deploy the reverse proxy in front of your backend app (for example, by pointing the DNS records of your domain name to the proxy instead of your app), it will transparently forward all traffic to the app - except when it sees a request coming in that's intended for the proxy itself. For example, the backend app can let a user trigger a login by rendering a link to the appropriate URL (by default this is `/.auth/login/<idp>`). The proxy intercepts that request, but rather than forwarding it to the backend app, it redirects the browser to the IdP instead. Once the user has successfully authenticated, the proxy then sets a session cookie to keep the user logged in for subsequent requests. As of then, the proxy adds HTTP headers towards the backend app with information about the authenticated user by means of a standard JWT token. The app therefore only needs to be able to work with standard JWT bearer tokens (which is traditionally supported in most platforms) and never has to deal with identity protocols, redirect flows, session cookies, ...
+
+Alternatively to providing a login link, you can also configure [inbound policies](#inbound-policies) to specify which paths in the application should be authenticated, so that a request for `/account` for example will always ensure that the user is logged in before even being able to reach that URL on the backend app.
+
+### Accessing protected resources
+
+When the backend app wants to call a downstream service, it typically needs to acquire an access token to authorize the request. In this case, rather than dealing with the complexity of token acquisition, caching, security, lifetime, refresh tokens, ... it can simply use a "callback" API exposed by the reverse proxy instead. In this case, the backend app can perform a simple HTTP request towards `/.auth/api/token` with certain request details (such as which scopes are requested in the token) and the proxy will do all the work to obtain a valid access token and return it to the app.
+
+For improved security, it's even possible to avoid exposure of the token (which is a security credential, in the end) to the backend app altogether, by using the "forward" API at `/.auth/api/forward`. In this case, the backend app sends an HTTP request with all details *as if it was intended for the downstream service*. But by configuring an [outbound policy](#outbound-policies) on the proxy, it knows to acquire an appropriate token and append it as an authorization header on the outgoing request towards the downstream service. The backend app simply receives the response from the service without having to deal with tokens at all.
+
+## Guiding Principles
+
+- **Provide a single abstraction towards the backend app for one or more Identity Providers (IdPs)** that end users can login with and for which the app can acquire tokens.
+  - For example, the app generally shouldn't care if the user just authenticated with the IdP, or if the request was authenticated through a session cookie for a subsequent call.
+  - The backend app also shouldn't care if the user was logged in with OpenID Connect, SAML, WS-Federation or any other supported protocol; the same information is presented to the app in the same format regardless of the IdP and protocol being used.
+  - By default, the proxy passes this information to the app by injecting a standard authorization header with a JWT token. This token contains claims with all relevant information for the backend app. This means the backend app only needs to use standard JWT middleware or libraries to authenticate the user, and never has to deal with identity protocols, login flows, sessions, ... It only cares about a single trusted token issuer which is the proxy itself, and it can validate its tokens through standard mechanisms such as relying on the OpenID Connect metadata exposed by the proxy.
+- **Interact with the backend app only through a stable HTTP based "contract"**, primarily relying on HTTP headers for passing information and (when needed) an easy-to-use API.
+  - For example, each request to the backend app will always have the same claims as part of the authorization header, regardless of how authentication was performed.
+  - If the app needs to request an access token, it can call back into the proxy using an API which takes care of acquiring, caching and refreshing tokens.
+  - For increased security, the backend app can even use an API on the proxy to let it forward an HTTP request to an external service; the proxy will then attach the right token for the destination service without the app ever needing to have access to the token itself.
+- **Don't host a user interface**, meaning that the proxy should not "present itself" to a user but only work between the IdP and backend app.
+  - For example, in case there are multiple IdPs for users to login with, it's up to the backend app to provide the necessary UI to allow the user to choose. The app then redirects to the appropriate endpoint on the proxy for authenticating the user with the chosen IdP.
+  - Because the proxy doesn't need to generate any HTML, it doesn't need to deal with branding, localization, accessibility, ...
 
 ## Functionality
 
-The reverse proxy should be able to:
+In the sections below:
 
-- Take care of all redirects towards the IdP when authentication is required, and the responses coming back.
-- Pass through relevant identity information to the application without exposing full details from the IdP (unless absolutely necessary), for example only pass a specific set of claims to the app as a JWT token or via HTTP headers.
-- Maintain session state for each user (i.e. issue and verify the session cookie).
-- Acquire tokens (id tokens, access tokens, refresh tokens) from the IdP and cache them securely and appropriately.
-- Support multiple authentication and authorization protocols (OpenID Connect, OAuth 2.0, SAML 2.0, WS-Federation).
-- Allow the app to request calls to other API's to be performed by the proxy so that the app doesn't even have to get access to the tokens (the reverse proxy requests them as needed and attaches them to the outbound call to the external API). This improves security dramatically in a Zero Trust context, as the app never sees the token.
-- Allow the app to request tokens to call other API's or use in the app itself (when it cannot be avoided, for example to attach tokens to SQL connections or SDK's used in the app).
-- Support multiple IdP's for a single application (although for more advanced cases a "federation broker" IdP such as Auth0 or Azure AD B2C may be more suitable).
-- Expose value-added functionality that is IdP-specific, for example:
-  - Support [incremental or dynamic consent when using the Microsoft identity platform](https://docs.microsoft.com/azure/active-directory/develop/v2-permissions-and-consent#incremental-and-dynamic-user-consent).
-  - Support workload identity federation as implemented by [Azure AD](https://docs.microsoft.com/azure/active-directory/develop/workload-identity-federation) or [Google](https://cloud.google.com/iam/docs/workload-identity-federation).
-  - Support [conditional access evaluation in Azure AD](https://docs.microsoft.com/azure/active-directory/conditional-access/concept-continuous-access-evaluation).
-  - Acquire tokens for [managed identities for Azure resources](https://docs.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview)
-  - Work with [user flows or custom policies in Azure AD B2C](https://docs.microsoft.com/azure/active-directory-b2c/user-flow-overview).
-  - Work with [Auth0 Organizations](https://auth0.com/docs/manage-users/organizations).
-  - ...
+- [X] A checked box indicates that a feature is supported in the proxy.
+- [ ] An unchecked box indicates it's planned for a future release.
 
-The proxy should never host a User Interface, i.e. it should not generate HTML and only work with the IdP and app but not "present itself" to the end user.
+### Deployment
 
-The proxy interacts with the application only through a stable HTTP based "contract". For example, the app generally shouldn't care if the user just authenticated directly from the IdP, or if authentication was performed through a session cookie for a subsequent call. The app should expect to see the same relevant information passed in for each call.
+For maximum flexibility, the proxy can be deployed in many ways:
 
-On top of that, to make it easier to build apps using the reverse proxy, a client SDK for all major runtimes/languages (.NET, Java, Python, Go, ...) could be convenient to:
-
-- Populate the current user / identity / claims principal in the application with the information coming from the proxy.
-- Request information from the proxy (e.g. to acquire a token, or perform an outbound call for which the proxy attaches the token).
-- Auto-wire certain common functionality with identity based information; for example: set the appropriate [SqlConnection.AccessToken](https://docs.microsoft.com/dotnet/api/system.data.sqlclient.sqlconnection.accesstoken?view=dotnet-plat-ext-6.0) property for .NET scenarios.
-
-## Deployment
-
-The proxy can be deployed in many ways for maximum flexibility:
-
-- As a self-hosted application (i.e. build and run the proxy however you want).
-- As a prebuilt container (likely as a reverse proxy sidecar container next to the app, for example as a service mesh in Kubernetes).
-- As built-in functionality of hosting platforms (for example, ideally it could replace the proprietary [Azure App Service "Easy Auth"](https://docs.microsoft.com/azure/app-service/overview-authentication-authorization) functionality as a fully managed offering by hosting this open source project directly in front of customer apps).
-- Ideally at some point as a [Dapr](https://dapr.io/) component or middleware.
-- Possibly even in-process; however then you would lose the benefit of the decoupled lifecycle from the app (for example, for independent updates).
+- [X] As a self-hosted application (i.e. build and run the proxy however you want).
+- [ ] As a prebuilt container (such as a reverse proxy "sidecar" container deployed next to the backend app, for example as a service mesh in Kubernetes).
+- [ ] As a [Dapr](https://dapr.io/) component or middleware.
+- [ ] As built-in functionality of hosting platforms (for example, it could replace the proprietary [Azure App Service "Easy Auth"](https://docs.microsoft.com/azure/app-service/overview-authentication-authorization) functionality as a fully managed offering, by hosting this open source project directly on the platform in front of customer apps).
 - ...
 
-## Configuration
+### Security
 
-Because you should be able to host the proxy in a variety of ways, its implementation should be considered a black box which is driven purely from configuration. For example, the available IdPs, anonymous versus authenticated paths, external APIs, scopes, ... The proxy should be *insanely configurable*.
+Communication between the proxy and the backend app can be secured.
 
-Configuration could be provided as environment variables, configuration files, an external configuration API endpoint (which is called at startup), ...
+- Outbound security (proxy to app)
+  - Client Certificate
+- Inbound security (app to proxy)
+  - None (discouraged, only if sufficient transport-level security can be enforced such as network ACLs)
+  - Basic authentication
+  - Fixed API key
+  - Client Certificate
+  - Authentication token: a round-tripped opaque token which the proxy sends on each outbound call to the app as an HTTP header (which can rotate each call or be cryptographically secured); the app simply forwards that on the call to the API to prove its identity; possibly this token also contains the unique user ID as known in proxy so it doesn't need additional parameters to identify the user
 
-## Claims Transformation
+### HTTP "Contract"
 
-### Default Behavior
+#### Backend App
 
-Auth Proxy uses incoming claims from the IdPs to generate the appropriate information that will be sent to the backend app.
+Information about the user is provided to the backend app in a standard `Authorization` HTTP header, with a `Bearer` JWT token containing the relevant (and configured) claims. The JWT can be validated in the backend app by standard JWT middleware, which is typically configured from an OpenID Connect metadata URL which the proxy exposes at `/.well-known/openid-configuration`.
 
-- For OpenId Connect: uses the claims of the `id_token` (*not* an `access_token` as this is opaque to the client and shouldn't carry *authentication* information).
-- For SAML 2.0 protocol and WS-Federation: uses the assertions in the SAML token.
-- For JWT bearer authorization: uses the claims from the incoming bearer token (typically an OAuth 2.0 `access_token` intended for this relying party).
+Next to that, the proxy also injects other HTTP headers towards the backend app, for example with an authorization token for the callback APIs. The backend app simply needs to send this header value back to the proxy when performing an API request.
 
-At a minimum, the proxy should create an identifier that the backend app can rely on for uniquely identifying the user, typically by combining a unique user value within the IdP with a unique identifier of the IdP itself. For example, in the case of OpenID Connect the user is identified using the standard `sub` (subject) claim, and the IdP using the standard `iss` (issuer) claim; these are combined into `sub + '@' + iss` and sent to the backend app.
+#### Token API
 
-### Claims Transformation Expressions
+The proxy exposes an API at `/.auth/api/token` to allow the backend app to acquire tokens. It expects an HTTP GET request with a few parameters:
 
-#### Syntax
+- `IdentityProvider`: the reference name of the [configured IdP](#identity-providers) from which to acquire a token.
+- `Actor`: indicates whether the token should be acquired on behalf of the user (which is embedded into the callback authorization token), on behalf of the app itself (using its client credentials), or other vendor-specific options (such as using [managed identities for Azure resources](https://docs.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview)).
+- `Scopes`: defines which scopes should be requested when acquiring the token.
+- `ReturnUrl`: in case the token could not be silently acquired (for example, the scopes weren't consented to yet, or MFA is required for the selected scopes), the proxy will return a redirect URL towards the IdP; it's then up to the app to redirect the browser to this URL. In such case the `ReturnUrl` specified here will be used to redirect the user back to after they have successfully authenticated with the IdP.
+
+Instead of passing in all these properties, the backend app can also include just a single `Profile` parameter which references a configured [token request profile](#token-request-profiles) on the proxy. This abstracts away the details from the backend app and allows it just to refer to a logical name of a certain scenario for which it needs a token.
+
+#### Forward API
+
+The proxy exposes an API at `/.auth/api/forward` to allow the backend app to forward calls to external HTTP services. When a service is configured via an [outbound policy](#outbound-policies), the proxy will see the HTTP request coming in for a configured destination, it acquires the necessary token (also in this case the details are configured in a [token request profile](#token-request-profiles)), and attaches it as a bearer token on the outgoing HTTP request it sends to the external service.
+
+The Forward API can be called exactly like the final destination would get called (meaning, all HTTP methods, headers and body as usual), with the only difference being that the immediate request is sent to the reverse proxy rather than the destination service, and you only provide the final destination as an `X-AuthProxy-Destination` HTTP header so the proxy knows where to send the final request to.
+
+Similar to the [Token API](#token-api), in case the proxy cannot silently acquire the token, the backend app must redirect the browser back to the IdP for authentication. The return URL where to redirect the browser afterwards is specified by the backend app in the `X-AuthProxy-ReturnUrl` HTTP header. If indeed the proxy needs to redirect the browser, it will communicate that back to the app using an HTTP status code `511 Network Authentication Required` and further details like the redirect URL towards the IdP in additional HTTP headers.
+
+#### Dynamic Actions
+
+Some decisions aren't static or configuration-driven, such as triggering a stronger form of authentication based on business logic (for example, requiring MFA when the user is about to confirm a financial transaction). The app can then instruct the proxy to perform certain functionality, for example by returning specific HTTP headers to the proxy to trigger an authentication challenge:
+
+- `X-AuthProxy-Action: Challenge`
+- `X-AuthProxy-ReturnUrl: /foo/bar`
+
+The proxy will see these headers coming back on the HTTP response and take appropriate action, for example by building the redirect URL for the IdP in this case and returning a redirect response to the browser instead.
+
+### Client SDK
+
+To make it easier to build apps using the reverse proxy, a client SDK for all major runtimes/languages (.NET, Java, Python, Go, ...) can be foreseen to:
+
+- [ ] Request information from the proxy (e.g. to [acquire a token](#token-api), or [perform an outbound call](#forward-api) for which the proxy attaches the token).
+- [ ] Trigger [dynamic actions](#dynamic-actions) by returning the right HTTP headers to the proxy.
+- [ ] Auto-wire certain common functionality with identity based information; for example: for .NET apps the SDK could set the [SqlConnection.AccessToken](https://docs.microsoft.com/dotnet/api/system.data.sqlclient.sqlconnection.accesstoken) property to a token acquired from the proxy.
+
+### Configuration
+
+For maximum flexibility, the proxy is intended to be *insanely configurable*. For example, the available IdPs, protocols, scopes, anonymous versus authenticated paths, external services, login and API endpoints, ... can all be changed via configuration. Because you should be able to host the proxy in a variety of ways and update it independently from the backend app, its implementation should be considered a black box which is driven purely from configuration.
+
+All the necessary configuration can be provided via:
+
+- [X] Configuration files
+- [X] Environment variables
+- [ ] An external API endpoint (which is called at startup)
+- ...
+
+#### Token Issuer
+
+(TODO)
+
+#### Identity Providers
+
+The proxy uses incoming claims from the IdPs to generate the appropriate information that will be sent to the backend app. Each type of IdP has a default set of claims mappings, which can further be customized in configuration by using [claims transformations](#claims-transformations).
+
+- For OpenId Connect, the proxy uses the claims of the `id_token` (*not* an `access_token` for a downstream service as this is opaque to the client and shouldn't carry *authentication* information anyway).
+- For JWT bearer authorization, the proxy uses the claims from the incoming bearer token (typically an OAuth 2.0 `access_token` intended for this relying party).
+- For SAML 2.0 protocol and WS-Federation, the proxy uses the assertions in the SAML token.
+
+At a minimum, the proxy creates the `sub` claim that the backend app can rely on for uniquely identifying the user, typically by combining a unique identifier of the user within the IdP, along with a unique identifier of the IdP itself. For example, in the case of OpenID Connect the user is identified using the standard `sub` (subject) claim, and the IdP using the standard `iss` (issuer) claim; these are combined into `sub + '@' + iss` and sent to the backend app as the final `sub` claim.
+
+Supported protocols:
+
+- [X] OpenID Connect
+- [ ] OAuth 2.0
+- [ ] SAML 2.0
+- [ ] WS-Federation
+
+Supported IdP services exposing vendor-specific functionality:
+
+- [X] Azure Active Directory
+  - [X] Support [incremental or dynamic consent when using the Microsoft identity platform](https://docs.microsoft.com/azure/active-directory/develop/v2-permissions-and-consent#incremental-and-dynamic-user-consent).
+  - [X] Acquire tokens for [managed identities for Azure resources](https://docs.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview).
+  - [ ] Support [workload identity federation](https://docs.microsoft.com/azure/active-directory/develop/workload-identity-federation).
+  - [ ] Support [conditional access evaluation in Azure AD](https://docs.microsoft.com/azure/active-directory/conditional-access/concept-continuous-access-evaluation).
+- [X] Azure AD B2C
+  - [X] Work with [user flows or custom policies in Azure AD B2C](https://docs.microsoft.com/azure/active-directory-b2c/user-flow-overview).
+- [ ] Google
+  - [ ] Support [workload identity federation](https://cloud.google.com/iam/docs/workload-identity-federation).
+- [ ] Auth0
+  - [ ] Work with [Auth0 Organizations](https://auth0.com/docs/manage-users/organizations).
+
+#### Token Request Profiles
+
+(TODO)
+
+#### Inbound Policies
+
+(TODO)
+
+#### Outbound Policies
+
+(TODO)
+
+### Claims Transformations
+
+#### General Syntax
 
 The claims that are sent to the backend app are pre-configured for each IdP type but can be fully customized via claims transformation expressions.
 
-Each expression returns an output claim based on a transformation expression:
+Each expression returns an output claim based on a transformation expression in the form:
 
 `output=<transformation>`
 
 As a shorthand to return the same output claim as an input claim, you can specify just the name of that claim. For example, adding an expression `email` will send the original `email` value(s) of the IdP to the backend app.
 
-An *empty* `<transformation>` means that no output will be returned; this can be useful when you want to remove an output claim that was generated by default. For example, adding an expression `iss=` (note the `=` sign at the end to differentiate it from the shorthand syntax explained above) ensures that no `iss` claim will be sent to the backend app.
+An *empty* `<transformation>` means that *no* output will be returned; this can be useful when you want to remove an output claim that was generated by default. For example, adding an expression `iss=` (note the `=` sign at the end to differentiate it from the shorthand syntax explained above) ensures that no `iss` claim will be sent to the backend app.
 
 #### Inputs
 
@@ -89,15 +191,13 @@ The following `config` names are available:
 
 - [ ] `config[issuer]`: the configured `issuer` value used by the proxy.
 - [ ] `config[audience]`: the configured `audience` value that represents the backend app.
-- [ ] ...
 
 The following `idp` names are available:
 
 - [ ] `idp[name]`: the `name` of the IdP that authenticated the user.
 - [ ] `idp[type]`: the `type` of the IdP that authenticated the user.
-- [ ] ...
 
-Note that if there are multiple claim values for a claim type in the expression, or even multiple claim types in the expression which each have multiple claim values, the output claim will have values for the Cartesian product of all input claim values.
+Note that if there are multiple claim values for a claim type in the expression, or even multiple claim types in the expression which each have multiple claim values, the output claim will have values for the Cartesian product of all input claim values. See the examples below for details.
 
 #### Functions
 
@@ -135,47 +235,16 @@ The following example expressions can be constructed:
 | `idp=idp[name]`                              | `{ "idp": "example.org" }`                                                                                                     | Returns the name of the IdP that authenticated the user as the `idp-name` claim     |
 | `scopes-roles=split(scp, ' ') + '-' + roles` | `{ "scopes-roles": [ "openid-reader", "openid-writer", "profile-reader", "profile-writer", "email-reader", "email-writer" ] }` | Returns the Cartesian product of all the (split) scopes and roles                   |
 
-## Security
+## Related Projects
 
-Communication between the proxy and the backend app can be secured.
-
-- Outbound security (proxy to app)
-  - Options:
-    - Client Certificate
-- Inbound security (app to proxy)
-  - The proxy's API should be opt-in enabled i.e. only expose the API if required by the API
-  - Options:
-    - None (discouraged, only if sufficient transport-level security can be enforced such as network ACLs)
-    - Basic authentication
-    - Fixed API key
-    - Client Certificate
-    - Authentication token: a round-tripped opaque token which the proxy sends on each outbound call to the app as an HTTP header (which can rotate each call or be cryptographically secured); the app simply forwards that on the call to the API to prove its identity; possibly this token also contains the unique user ID as known in proxy so it doesn't need additional parameters to identify the user
-
-## Dynamic Actions
-
-Some decisions aren't static or configuration-driven, for example to trigger authentication or MFA based on business logic. The app can then instruct the proxy to perform certain functionality, for example by returning well-defined HTTP headers to trigger an authentication challenge:
-
-- `X-AuthProxy-Action: challenge`
-- `X-AuthProxy-ReturnUrl: /foo/bar`
-
-The proxy will see these headers coming back on the HTTP response and take appropriate action, for example by building the redirect URL for the IdP in this case and returning that as the HTTP response instead.
-
-Again, this can be made easier for app developers by using the client SDK for their given runtime/language.
-
-## Whiteboard
-
-![Whiteboard](media/whiteboard.png)
-
-## Notes
-
-- App Service Easy Auth is the closest we have to a realization of the idea today at Microsoft, but locked to App Service.
-  - See [Configuration File Reference](https://docs.microsoft.com/azure/app-service/configure-authentication-file-based#configuration-file-reference) for relevant ideas.
-- The Azure API Management Token Store also aims for a related mission.
-- There are somewhat similar implementations but they don't go as deep and they're a part of other stacks, for example [Ambassador Edge Stack](https://www.getambassador.io/docs/edge-stack/latest/howtos/oauth-oidc-auth/).
-- This should be provided out of the box in Dapr
-  - [Dapr middleware](https://docs.dapr.io/reference/components-reference/supported-middleware/) has some of this functionality (but built-in to the Dapr sidecar itself and not externalized/pluggable as another sidecar?)
-    - [OAuth2](https://github.com/dapr/components-contrib/blob/master/middleware/http/oauth2/oauth2_middleware.go) supports authorization code exchange and then puts the acquired token on the call to the actual Dapr service.
-      - However, it doesn't perform token caching, inspection/validation of the token (audience, timestamps, ...), etc.
-    - [OAuth2 Client Credentials](https://github.com/dapr/components-contrib/blob/master/middleware/http/oauth2clientcredentials/oauth2clientcredentials_middleware.go) supports token caching, but only works with client secret (no certificate or managed identity or other authentication mechanism).
-    - [Bearer](https://github.com/dapr/components-contrib/blob/master/middleware/http/bearer/bearer_middleware.go) "validates" tokens but performs only very limited validation against OpenID Connect metadata (which doesn't seem cached either, which could be a performance hit).
-- Actual token cache / store could be "API Hub" which is used by APIM Token Store and Logic Apps for example
+- There are other similar implementations but they don't go as deep and they're a part of other stacks, for example:
+  - [Ambassador Edge Stack](https://www.getambassador.io/docs/edge-stack/latest/howtos/oauth-oidc-auth/).
+  - [OAuth2 Proxy](https://github.com/oauth2-proxy/oauth2-proxy).
+- [App Service "Easy Auth"](https://docs.microsoft.com/azure/app-service/overview-authentication-authorization).
+  - This is a vendor-specific implementation of the concept but provides a lot less functionality and flexibility.
+- [Dapr](https://dapr.io/) has some of this functionality but built-in to the Dapr sidecar itself (not externalized/pluggable as another sidecar).
+  - [Dapr middleware](https://docs.dapr.io/reference/components-reference/supported-middleware/)
+  - [OAuth2](https://github.com/dapr/components-contrib/blob/master/middleware/http/oauth2/oauth2_middleware.go) supports an authorization code exchange and then puts the acquired token on the call to the actual Dapr service.
+    - However, it doesn't perform token caching, inspection/validation of the token (audience, timestamps, ...), or other operations that are typically required.
+  - [OAuth2 Client Credentials](https://github.com/dapr/components-contrib/blob/master/middleware/http/oauth2clientcredentials/oauth2clientcredentials_middleware.go) supports token caching, but only works with client secret (no certificate or managed identity or other authentication mechanism).
+  - [Bearer](https://github.com/dapr/components-contrib/blob/master/middleware/http/bearer/bearer_middleware.go) "validates" tokens but performs only very limited validation against OpenID Connect metadata (which doesn't seem cached either, which could be a performance hit).

@@ -18,13 +18,13 @@ public class TokenIssuer
     public TokenIssuer(AuthProxyConfig config)
     {
         this.Audience = config.Backend.Audience;
-        this.Issuer = config.Authentication.TokenIssuer.Issuer;
-        this.expiration = config.Authentication.TokenIssuer.Expiration;
-        if (config.Authentication.TokenIssuer.SigningCertificates.Count == 0)
+        this.Issuer = config.TokenIssuer.Issuer;
+        this.expiration = config.TokenIssuer.Expiration;
+        if (config.TokenIssuer.SigningCertificates.Count == 0)
         {
             throw new ArgumentOutOfRangeException("There are no signing certificates configured for the token issuer.");
         }
-        foreach (var certificateConfig in config.Authentication.TokenIssuer.SigningCertificates)
+        foreach (var certificateConfig in config.TokenIssuer.SigningCertificates)
         {
             ArgumentNullException.ThrowIfNull(certificateConfig.Path);
             var certificate = new X509Certificate2(certificateConfig.Path, certificateConfig.Password);

@@ -107,7 +107,7 @@ public class ExternalServiceYarpRequestHandler : BaseYarpRequestHandler
         foreach (var outboundPolicy in this.authProxyConfig.Policies.Outbound)
         {
             // TODO: Support more than a simple "starts with" match on the path pattern.
-            if (outboundPolicy.UrlPatterns != null && outboundPolicy.UrlPatterns.Any(p => destinationUrl.StartsWith(p, StringComparison.InvariantCultureIgnoreCase)))
+            if (outboundPolicy.UrlPattern != null && destinationUrl.StartsWith(outboundPolicy.UrlPattern, StringComparison.InvariantCultureIgnoreCase))
             {
                 // Stop processing more policies when a match was found.
                 return outboundPolicy;

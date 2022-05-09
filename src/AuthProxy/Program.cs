@@ -116,9 +116,12 @@ app.Map(logoutPath, async httpContext =>
     httpContext.Response.Headers.Location = returnUrl;
 });
 
-// Map everything else to YARP.
+// Map the "Forward" API to call an external service.
+// TODO: Make configurable whether or not to enable this API as this increases the attack surface of the proxy.
 var externalServicehandler = app.Services.GetRequiredService<ExternalServiceYarpRequestHandler>();
 app.Map(authProxyConfig.Api.BasePath + "/" + Constants.ApiPaths.Forward, externalServicehandler.HandleRequest);
+
+// Map everything else to YARP to be served by the backend app.
 var backendAppHandler = app.Services.GetRequiredService<BackendAppYarpRequestHandler>();
 app.Map("/{**catch-all}", backendAppHandler.HandleRequest);
 
