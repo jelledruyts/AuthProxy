@@ -153,7 +153,6 @@ The example below shows the backend app making a callback API request towards th
 
 ```http
 GET /.auth/api/forward HTTP/1.1
-Host: localhost:7268
 Authorization: Bearer eyJhbGciOi...
 X-AuthProxy-Destination: https://graph.microsoft.com/v1.0/me
 X-AuthProxy-ReturnUrl: https://example.org/...
