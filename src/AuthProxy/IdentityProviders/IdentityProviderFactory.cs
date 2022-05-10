@@ -50,6 +50,10 @@ public class IdentityProviderFactory
         {
             return new OpenIdConnectIdentityProvider(configuration, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName);
         }
+        else if (configuration.Type == IdentityProviderType.WsFederation)
+        {
+            return new WsFederationIdentityProvider(configuration, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName);
+        }
         else if (configuration.Type == IdentityProviderType.AzureAD)
         {
             return new AzureADIdentityProvider(configuration, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName);

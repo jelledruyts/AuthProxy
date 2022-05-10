@@ -9,6 +9,9 @@ using AuthProxy.Infrastructure.ReverseProxy;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
+// Don't change any incoming claims, let the claims transformer do that.
+JwtSecurityTokenHandler.DefaultOutboundClaimTypeMap.Clear();
+
 // Set up the web application and DI container.
 var builder = WebApplication.CreateBuilder(args);
 

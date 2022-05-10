@@ -222,9 +222,9 @@ You can configure the name of the authentication session cookie issued by the pr
 You can define one or more IdPs which the proxy can use to log users in or acquire tokens from. You give each IdP a reference name, so that you can refer to it in URLs and from other places like [token request profiles](#token-request-profiles). IdPs using any of the following identity protocols are supported:
 
 - [X] OpenID Connect
+- [X] WS-Federation
 - [ ] OAuth 2.0
 - [ ] SAML 2.0
-- [ ] WS-Federation
 
 Furthermore, you can also define an IdP to be a specific type which allows the proxy to use vendor-specific functionality:
 
