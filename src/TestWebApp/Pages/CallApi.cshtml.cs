@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
@@ -33,7 +32,7 @@ public class CallApiModel : PageModel
         this.logger = logger;
         this.httpClientFactory = httpClientFactory;
         this.authProxyBaseUrl = new Uri(configuration.GetValue<string>("AuthProxyBaseUrl"));
-        this.jsonSerializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        this.jsonSerializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
         this.jsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     }
 
@@ -85,7 +84,7 @@ public class CallApiModel : PageModel
 
             // Perform the API call towards Auth Proxy.
             var tokenApiPath = this.HttpContext.Request.Headers["X-AuthProxy-Callback-TokenEndpoint"].First(); // Retrieve the path to the Token API from the headers to avoid hard-coding it.
-            var responseMessage = await httpClient.PostAsync(tokenApiPath, JsonContent.Create(request));
+            var responseMessage = await httpClient.PostAsync(tokenApiPath, JsonContent.Create(request, null, jsonSerializerOptions));
             var responseBody = await responseMessage.Content.ReadAsStringAsync();
 
             // Check the API response.
