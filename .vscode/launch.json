@@ -31,8 +31,7 @@
             "cwd": "${workspaceFolder}/src/TestWebApp",
             "stopAtEntry": false,
             "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development",
-                "DISABLED_ALL_PROXY": "http://localhost:5273"
+                "ASPNETCORE_ENVIRONMENT": "Development"
             },
             "sourceFileMap": {
                 "/Views": "${workspaceFolder}/Views"
