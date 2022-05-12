@@ -38,6 +38,22 @@
             }
         },
         {
+            "name": "TestWebAppSdk",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/TestWebAppSdk/bin/Debug/net6.0/TestWebAppSdk.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/TestWebAppSdk",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "sourceFileMap": {
+                "/Views": "${workspaceFolder}/Views"
+            }
+        },
+        {
             "name": ".NET Core Attach",
             "type": "coreclr",
             "request": "attach"
@@ -45,10 +61,19 @@
     ],
     "compounds": [
         {
-            "name": "Launch All",
+            "name": "Launch with TestWebApp",
             "configurations": [
                 "AuthProxy",
                 "TestWebApp"
+            ],
+            "preLaunchTask": "build",
+            "stopAll": true
+        },
+        {
+            "name": "Launch with TestWebAppSdk",
+            "configurations": [
+                "AuthProxy",
+                "TestWebAppSdk"
             ],
             "preLaunchTask": "build",
             "stopAll": true

@@ -35,7 +35,7 @@ public class IdentityProviderFactory
                 // Note that it was already added before, but in order to get a clean URL for the case where
                 // there's only a single IdP, it has to be added specifically as the login callback path
                 // has to be unique for each registered authentication service.
-                var defaultAuthenticationScheme = Defaults.AuthenticationScheme;
+                var defaultAuthenticationScheme = Constants.AuthenticationSchemes.DefaultIdentityProvider;
                 var defaultLoginPath = GetDefaultLoginPath();
                 var defaultLoginCallbackPath = GetDefaultLoginCallbackPath();
                 this.DefaultIdentityProvider = CreateIdentityProvider(defaultIdentityProvider.Configuration, defaultAuthenticationScheme, defaultLoginPath, defaultLoginCallbackPath, postLoginReturnUrlQueryParameterName);

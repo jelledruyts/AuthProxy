@@ -32,8 +32,8 @@ public class ExternalServiceYarpRequestHandler : BaseYarpRequestHandler
         httpContext.User = authenticateResult.Principal;
 
         // Get the destination header from the incoming request header.
-        var destinationUrl = httpContext.Request.Headers.GetValueOrDefault(Defaults.HeaderNameDestination);
-        httpContext.Request.Headers.Remove(Defaults.HeaderNameDestination); // Remove the header from the outgoing request.
+        var destinationUrl = httpContext.Request.Headers.GetValueOrDefault(AuthProxyConstants.HttpHeaderNames.Destination);
+        httpContext.Request.Headers.Remove(AuthProxyConstants.HttpHeaderNames.Destination); // Remove the header from the outgoing request.
         if (destinationUrl == null)
         {
             // No destination URL was requested, reject the request.
@@ -65,8 +65,8 @@ public class ExternalServiceYarpRequestHandler : BaseYarpRequestHandler
         }
 
         // Request a token from the identity provider.
-        var returnUrl = httpContext.Request.Headers.GetValueOrDefault(Defaults.HeaderNameReturnUrl);
-        httpContext.Request.Headers.Remove(Defaults.HeaderNameReturnUrl); // Remove the header from the outgoing request.
+        var returnUrl = httpContext.Request.Headers.GetValueOrDefault(AuthProxyConstants.HttpHeaderNames.ReturnUrl);
+        httpContext.Request.Headers.Remove(AuthProxyConstants.HttpHeaderNames.ReturnUrl); // Remove the header from the outgoing request.
         var token = await identityProvider.GetTokenAsync(httpContext, new TokenRequest
         {
             Actor = profile.Actor,
@@ -86,11 +86,11 @@ public class ExternalServiceYarpRequestHandler : BaseYarpRequestHandler
             // The required token could not be acquired and a redirect is required, return redirect information back to caller via
             // HTTP response headers (as the response body is expected to match whatever the external service would have returned).
             httpContext.Response.StatusCode = (int)HttpStatusCode.NetworkAuthenticationRequired;
-            httpContext.Response.Headers.Add(Defaults.HeaderNameStatus, token.Status.ToString());
-            httpContext.Response.Headers.Add(Defaults.HeaderNameRedirectUrl, token.RedirectUrl);
+            httpContext.Response.Headers.Add(AuthProxyConstants.HttpHeaderNames.Status, token.Status.ToString());
+            httpContext.Response.Headers.Add(AuthProxyConstants.HttpHeaderNames.RedirectUrl, token.RedirectUrl);
             if (token.RedirectCookies != null && token.RedirectCookies.Any())
             {
-                httpContext.Response.Headers.Add(Defaults.HeaderNameRedirectCookies, (StringValues)token.RedirectCookies);
+                httpContext.Response.Headers.Add(AuthProxyConstants.HttpHeaderNames.RedirectCookies, (StringValues)token.RedirectCookies);
             }
             await httpContext.Response.CompleteAsync();
             return false;

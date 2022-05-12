@@ -46,7 +46,7 @@ public class BackendAppYarpRequestHandler : BaseYarpRequestHandler
                 {
                     // The user is not yet authenticated, trigger an authentication.
                     // If any IdPs were specified on the policy, use the first one to authenticate the user; otherwise use the default scheme.
-                    var scheme = inboundPolicy.IdentityProviders?.FirstOrDefault() ?? Defaults.AuthenticationScheme;
+                    var scheme = inboundPolicy.IdentityProviders?.FirstOrDefault() ?? Constants.AuthenticationSchemes.DefaultIdentityProvider;
                     return await ChallengeAsync(httpContext, scheme);
                 }
             }

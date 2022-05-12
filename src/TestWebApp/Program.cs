@@ -1,37 +1,30 @@
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.HttpOverrides;
+
+// Don't map any standard OpenID Connect claims to Microsoft-specific claims
+// so that the actual claim types sent by the proxy are shown on the pages.
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddHttpClient();
-builder.Services.AddRazorPages()
-    .AddRazorRuntimeCompilation();
 
-builder.Services.AddHttpLogging(options =>
-{
-    options.LoggingFields = HttpLoggingFields.RequestPropertiesAndHeaders;
-});
+builder.Services.AddRazorPages().AddRazorRuntimeCompilation();
 
+// In case the reverse proxy is configured to overwrite the host header, ensure the app
+// "sees" the original request URL by inspecting the headers added by the reverse proxy.
+// See https://docs.microsoft.com/aspnet/core/host-and-deploy/proxy-load-balancer.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    // Ensure to disable the middleware that processes forwarded headers to see the real headers.
-    // See https://docs.microsoft.com/aspnet/core/host-and-deploy/proxy-load-balancer.
-    options.ForwardedHeaders = ForwardedHeaders.None;
-
-    // On the other hand, *if* the reverse proxy is configured to overwrite the host header,
-    // ensure the app "sees" the original request URL by inspecting the headers added by the reverse proxy.
-    // options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedProto;
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedProto;
 });
-
-JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // Don't map any standard OpenID Connect claims to Microsoft-specific claims.
 
 // Add authentication based on the incoming JWT issued by the reverse proxy.
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = builder.Configuration.GetValue<string>("AuthProxyBaseUrl"); // Refer back to Auth Proxy's OIDC metadata endpoint to validate incoming tokens.
+        options.Authority = builder.Configuration.GetValue<string>("AuthProxy:BaseUrl"); // Refer back to Auth Proxy's OIDC metadata endpoint to validate incoming tokens.
         options.TokenValidationParameters.ValidAudience = "AuthProxy.BackendApp"; // The audience of the token is defined in Auth Proxy's configuration.
         options.TokenValidationParameters.NameClaimType = "name";
         options.TokenValidationParameters.RoleClaimType = "roles";
@@ -39,11 +32,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
-app.UseForwardedHeaders();
-app.UseHttpLogging();
 app.UseExceptionHandler("/Error");
 app.UseStaticFiles();
 app.UseRouting();
+app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapRazorPages();

@@ -44,14 +44,14 @@ public class BackendAppYarpHttpTransformer : BaseHttpTransformer
         // TODO: Encrypt the information rather than package it up in a (signed but readable) JWT.
         // TODO: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
         var roundTripToken = this.tokenIssuer.CreateToken(roundTripIdentity, TokenIssuer.ApiAudience);
-        proxyRequest.Headers.Add(Defaults.HeaderNameCallbackAuthorizationHeaderName, HeaderNames.Authorization);
-        proxyRequest.Headers.Add(Defaults.HeaderNameCallbackAuthorizationHeaderValue, $"{Constants.HttpHeaders.Bearer} {roundTripToken}");
+        proxyRequest.Headers.Add(AuthProxyConstants.HttpHeaderNames.CallbackAuthorizationHeaderName, HeaderNames.Authorization);
+        proxyRequest.Headers.Add(AuthProxyConstants.HttpHeaderNames.CallbackAuthorizationHeaderValue, $"{Constants.HttpHeaders.Bearer} {roundTripToken}");
 
         // Inject headers containing the callback API paths to avoid that the backend app has to hard-code these.
         // TODO: Make configurable if and how to pass this information; for example a configuration setting with the HTTP header name,
         // in which case null or an empty string disables sending that information.
-        proxyRequest.Headers.Add(Defaults.HeaderNameCallbackTokenEndpoint, this.authProxyConfig.Api.BasePath + "/" + Constants.ApiPaths.Token);
-        proxyRequest.Headers.Add(Defaults.HeaderNameCallbackForwardEndpoint, this.authProxyConfig.Api.BasePath + "/" + Constants.ApiPaths.Forward);
+        proxyRequest.Headers.Add(AuthProxyConstants.HttpHeaderNames.CallbackTokenEndpoint, this.authProxyConfig.Api.BasePath + "/" + Constants.ApiPaths.Token);
+        proxyRequest.Headers.Add(AuthProxyConstants.HttpHeaderNames.CallbackForwardEndpoint, this.authProxyConfig.Api.BasePath + "/" + Constants.ApiPaths.Forward);
 
         // Determine how to set the outgoing Host header.
         if (this.authProxyConfig.Backend.HostPolicy == HostPolicy.UseHostFromBackendApp)
@@ -74,11 +74,11 @@ public class BackendAppYarpHttpTransformer : BaseHttpTransformer
         // Only do this if there is no logical better alternative, like a direct inbound URL from the app (e.g. "/.auth/logout").
         if (proxyResponse != null)
         {
-            var action = proxyResponse.Headers.GetValueOrDefault(Defaults.HeaderNameAction);
+            var action = proxyResponse.Headers.GetValueOrDefault(AuthProxyConstants.HttpHeaderNames.Action);
             if (string.Equals(action, "logout", StringComparison.OrdinalIgnoreCase))
             {
                 httpContext.Response.Clear();
-                var returnUrl = proxyResponse.Headers.GetValueOrDefault(Defaults.HeaderNameReturnUrl) ?? "/";
+                var returnUrl = proxyResponse.Headers.GetValueOrDefault(AuthProxyConstants.HttpHeaderNames.ReturnUrl) ?? "/";
                 await httpContext.SignOutAsync(new AuthenticationProperties { RedirectUri = returnUrl });
                 httpContext.Response.StatusCode = (int)HttpStatusCode.Found;
                 httpContext.Response.Headers.Location = returnUrl;

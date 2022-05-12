@@ -1,0 +1,74 @@
+@page "{handler?}"
+@model CallApiModel
+@{
+    ViewData["Title"] = "Call API";
+}
+
+<h2>Get Token</h2>
+
+@if (Model.InfoMessage != null)
+{
+    <p class="alert alert-info">@Model.InfoMessage</p>
+}
+
+<form method="post" asp-page-handler="GetToken">
+    <div class="alert alert-secondary">
+        <p class="mb-3 lead"><em>Either refer to a configured token request profile...</em></p>
+        <div class="mb-3">
+            <label for="tokenRequestProfile" class="form-label">Profile</label>
+            <input type="text" class="form-control" id="tokenRequestProfile" name="tokenRequestProfile" value="@Model.TokenRequestProfile">
+        </div>
+    </div>
+
+    <div class="alert alert-secondary">
+        <p class="mb-3 lead"><em>Or specify the full token request details...</em></p>
+        <div class="mb-3">
+            <label for="tokenRequestIdentityProvider" class="form-label">Identity Provider</label>
+            <input type="text" class="form-control" id="tokenRequestIdentityProvider" name="tokenRequestIdentityProvider" value="@Model.TokenRequestIdentityProvider">
+        </div>
+        <div class="mb-3">
+            <label for="tokenRequestScopes" class="form-label">Scopes</label>
+            <input type="text" class="form-control" id="tokenRequestScopes" name="tokenRequestScopes" value="@Model.TokenRequestScopes">
+        </div>
+        <div class="mb-3">
+            <div>
+                <label for="tokenRequestActorUser" class="form-label">Actor (who or what the token is impersonating)</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="tokenRequestActor" id="tokenRequestActorUser" value="User" checked="@(Model.TokenRequestActor == AuthProxy.Models.Actor.User)">
+                <label class="form-check-label" for="tokenRequestActorUser">Current user</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="tokenRequestActor" id="tokenRequestActorApp" value="App" checked="@(Model.TokenRequestActor == AuthProxy.Models.Actor.App)">
+                <label class="form-check-label" for="tokenRequestActorApp">The app itself</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="tokenRequestActor" id="tokenRequestActorAzureManagedIdentity" value="AzureManagedIdentity" checked="@(Model.TokenRequestActor == AuthProxy.Models.Actor.AzureManagedIdentity)">
+                <label class="form-check-label" for="tokenRequestActorAzureManagedIdentity">The Azure managed identity of the app</label>
+            </div>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+@if (Model.GetTokenResult != null)
+{
+    <h3 class="mt-3">Result</h3>
+    <pre class="alert alert-info" style="white-space: pre-wrap;"><code>@Model.GetTokenResult</code></pre>
+}
+
+<h2 class="mt-4">Forward Call</h2>
+
+<form method="post" asp-page-handler="ForwardCall">
+    <div class="mb-3">
+        <label for="forwardCallDestinationUrl" class="form-label">Destination URL</label>
+        <input type="text" class="form-control" id="forwardCallDestinationUrl" name="forwardCallDestinationUrl" value="@Model.ForwardCallDestinationUrl">
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+@if (Model.ForwardCallResult != null)
+{
+    <h3 class="mt-3">Result</h3>
+    <pre class="alert alert-info" style="white-space: pre-wrap;"><code>@Model.ForwardCallResult</code></pre>
+}

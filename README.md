@@ -186,7 +186,7 @@ The proxy will see these headers coming back on the HTTP response and take appro
 
 To make it easier to build apps using the reverse proxy, a client SDK for all major runtimes/languages (.NET, Java, Python, Go, ...) can be foreseen to:
 
-- [ ] Request information from the proxy (e.g. to [acquire a token](#token-api), or [perform an outbound call](#forward-api) for which the proxy attaches the token).
+- [X] Request information from the proxy (e.g. to [acquire a token](#token-api), or [perform an outbound call](#forward-api) for which the proxy attaches the token).
 - [ ] Trigger [dynamic actions](#dynamic-actions) by returning the right HTTP headers to the proxy.
 - [ ] Auto-wire certain common functionality with identity based information; for example: for .NET apps the SDK could set the [SqlConnection.AccessToken](https://docs.microsoft.com/dotnet/api/system.data.sqlclient.sqlconnection.accesstoken) property to a token acquired from the proxy.
 

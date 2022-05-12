@@ -1,0 +1,20 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<h3>Identity</h3>
+<partial name="_Table" model="Model.IdentityInfo" />
+
+@if (Model.ClaimsInfo != null && Model.ClaimsInfo.Any())
+{
+<h3>Claims</h3>
+<partial name="_Table" model="Model.ClaimsInfo" />
+}
+
+<h3>Request</h3>
+<partial name="_Table" model="Model.RequestInfo" />
+
+<h3>HTTP Headers</h3>
+<partial name="_Table" model="Model.HttpHeadersInfo" />

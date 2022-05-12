@@ -30,7 +30,7 @@ public class AzureADB2CIdentityProvider : AzureADIdentityProvider
     {
         // Override IdP-specific claims transformations to include useful claims by default and to make other ones more meaningful.
         var claimTransformations = base.GetDefaultClaimTransformations();
-        claimTransformations.Add("name");
+        claimTransformations.Add(AuthProxyConstants.Defaults.NameClaimType);
         claimTransformations.Add("emails");
         claimTransformations.Add("tfp");
         return claimTransformations;

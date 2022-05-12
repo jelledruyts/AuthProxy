@@ -31,7 +31,7 @@ public class CallApiModel : PageModel
     {
         this.logger = logger;
         this.httpClientFactory = httpClientFactory;
-        this.authProxyBaseUrl = new Uri(configuration.GetValue<string>("AuthProxyBaseUrl"));
+        this.authProxyBaseUrl = new Uri(configuration.GetValue<string>("AuthProxy:BaseUrl"));
         this.jsonSerializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
         this.jsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     }
@@ -52,20 +52,20 @@ public class CallApiModel : PageModel
     {
         try
         {
-            // Prepare the token request for the Auth Proxy API.
-            var request = new TokenRequest
+            // If a redirect would be necessary, make the redirect URL return back to this page
+            // with additional query parameters to remember the original request values.
+            var returnUrl = this.Url.Page("CallApi", null, new
             {
-                // If a redirect would be necessary, make the redirect URL return back to this page with additional query parameters to remember the original request values.
-                ReturnUrl = this.Url.Page("CallApi", null, new
-                {
-                    TokenRequestProfile = this.TokenRequestProfile,
-                    TokenRequestIdentityProvider = this.TokenRequestIdentityProvider,
-                    TokenRequestScopes = this.TokenRequestScopes
-                }, this.HttpContext.Request.Scheme, this.HttpContext.Request.Host.Value)
-            };
+                TokenRequestProfile = this.TokenRequestProfile,
+                TokenRequestIdentityProvider = this.TokenRequestIdentityProvider,
+                TokenRequestScopes = this.TokenRequestScopes
+            });
+
+            // Prepare the token request for the Auth Proxy API.
+            var request = new TokenRequest { ReturnUrl = returnUrl };
             if (!string.IsNullOrWhiteSpace(this.TokenRequestProfile))
             {
-                // A token request profile was request, don't specify the other properties.
+                // A token request profile was requested, don't specify the other properties.
                 request.Profile = this.TokenRequestProfile;
             }
             else
@@ -75,9 +75,11 @@ public class CallApiModel : PageModel
                 request.Scopes = this.TokenRequestScopes?.Split(" ");
             }
 
-            // Retrieve the authorization token that Auth Proxy provided to call back into its own API.
+            // Get an HTTP client to call the proxy's API.
             var httpClient = this.httpClientFactory.CreateClient();
             httpClient.BaseAddress = this.authProxyBaseUrl;
+
+            // Retrieve the authorization token that Auth Proxy provided to call back into its own API.
             var authorizationHeaderName = this.HttpContext.Request.Headers["X-AuthProxy-Callback-AuthorizationHeader-Name"].First();
             var authorizationHeaderValue = this.HttpContext.Request.Headers["X-AuthProxy-Callback-AuthorizationHeader-Value"].First();
             httpClient.DefaultRequestHeaders.Add(authorizationHeaderName, authorizationHeaderValue);
@@ -128,14 +130,25 @@ public class CallApiModel : PageModel
     {
         try
         {
+            // If a redirect would be necessary, make the redirect URL return back to this page
+            // with additional query parameters to remember the original request values.
+            var returnUrl = this.Url.Page("CallApi", null, new
+            {
+                ForwardCallDestinationUrl = this.ForwardCallDestinationUrl
+            });
+
+            // Get an HTTP client to call the destination service.
             var httpClient = this.httpClientFactory.CreateClient();
-            httpClient.BaseAddress = this.authProxyBaseUrl;
-            // If a redirect would be necessary, make the redirect URL return back to this page with additional query parameters to remember the original request values.
-            httpClient.DefaultRequestHeaders.Add("X-AuthProxy-ReturnUrl", this.Url.Page("CallApi", null, new { ForwardCallDestinationUrl = this.ForwardCallDestinationUrl }, this.HttpContext.Request.Scheme, this.HttpContext.Request.Host.Value));
+
+            // Retrieve the authorization token that Auth Proxy provided to call back into its own API.
             var authorizationHeaderName = this.HttpContext.Request.Headers["X-AuthProxy-Callback-AuthorizationHeader-Name"].First();
             var authorizationHeaderValue = this.HttpContext.Request.Headers["X-AuthProxy-Callback-AuthorizationHeader-Value"].First();
             httpClient.DefaultRequestHeaders.Add(authorizationHeaderName, authorizationHeaderValue);
+
+            // Rather than going directly towards the destination URL, call the proxy's Forward API instead.
             httpClient.DefaultRequestHeaders.Add("X-AuthProxy-Destination", this.ForwardCallDestinationUrl);
+            httpClient.DefaultRequestHeaders.Add("X-AuthProxy-ReturnUrl", returnUrl);
+            httpClient.BaseAddress = this.authProxyBaseUrl;
             var forwardApiPath = this.HttpContext.Request.Headers["X-AuthProxy-Callback-ForwardEndpoint"].First(); // Retrieve the path to the Forward API from the headers to avoid hard-coding it.
             var responseMessage = await httpClient.GetAsync(forwardApiPath);
             var responseBody = await responseMessage.Content.ReadAsStringAsync();
@@ -181,7 +194,7 @@ public class CallApiModel : PageModel
         return Page();
     }
 
-    // Local copy of the models (ultimately this could live in a client SDK along with helpers).
+    // Local copy of the models (as we're not using the Client SDK here).
 
     public enum Actor
     {

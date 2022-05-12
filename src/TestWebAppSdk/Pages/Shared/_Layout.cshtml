@@ -1,0 +1,75 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Auth Proxy Test Web App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/TestWebApp.styles.css" asp-append-version="true" />
+</head>
+
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+            <div class="container">
+                <a class="navbar-brand" asp-area="" asp-page="/Index">Auth Proxy Test Web App</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownLogin" role="button" data-bs-toggle="dropdown" aria-expanded="false">Login</a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdownLogin">
+                                <li><a class="dropdown-item" href="~/.auth/login">Login (Default)</a></li>
+                                <li><a class="dropdown-item" href="~/.auth/login/aad">Login (AAD/OIDC)</a></li>
+                                <li><a class="dropdown-item" href="~/.auth/login/aad-wsfed">Login (AAD/WS-Federation)</a></li>
+                                <li><a class="dropdown-item" href="~/.auth/login/b2c">Login (B2C)</a></li>
+                                <li><a class="dropdown-item" href="~/.auth/login/auth0">Login (Auth0)</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownLogout" role="button" data-bs-toggle="dropdown" aria-expanded="false">Logout</a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdownLogout">
+                                <li><a class="dropdown-item" href="~/.auth/logout">Logout</a></li>
+                                <li><a class="dropdown-item" asp-page="/Logout">Logout (Header)</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-page="/Account" title="This page should always ensure you are logged in.">Account</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-page="/Admin" title="This page should only be accessible if you are authenticated with the identity provider for admins.">Admin</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-page="/Consumer" title="This page should only be accessible if you are authenticated with the identity provider for consumers.">Consumer</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-page="/Privacy" title="This page should always be accessible.">Privacy</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="~/secret" title="Attempting to access this link should always result in an access denied error.">Secret</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-page="/CallApi">Call API</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+
+</html>

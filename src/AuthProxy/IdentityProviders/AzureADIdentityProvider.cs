@@ -52,8 +52,8 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
     {
         // Override IdP-specific claims transformations to include useful claims by default and to make other ones more meaningful.
         var claimTransformations = base.GetDefaultClaimTransformations();
-        claimTransformations.Add("name=preferred_username");
-        claimTransformations.Add("roles");
+        claimTransformations.Add($"{AuthProxyConstants.Defaults.NameClaimType}=preferred_username");
+        claimTransformations.Add(AuthProxyConstants.Defaults.RoleClaimType);
         claimTransformations.Add("email");
         return claimTransformations;
     }
