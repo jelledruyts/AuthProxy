@@ -231,7 +231,7 @@ Furthermore, you can also define an IdP to be a specific type which allows the p
   - [X] Support [incremental or dynamic consent when using the Microsoft identity platform](https://docs.microsoft.com/azure/active-directory/develop/v2-permissions-and-consent#incremental-and-dynamic-user-consent).
   - [X] Acquire tokens for [managed identities for Azure resources](https://docs.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview).
   - [ ] Support [workload identity federation](https://docs.microsoft.com/azure/active-directory/develop/workload-identity-federation).
-  - [ ] Support [conditional access evaluation in Azure AD](https://docs.microsoft.com/azure/active-directory/conditional-access/concept-continuous-access-evaluation).
+  - [ ] Support [continuous access evaluation in Azure AD](https://docs.microsoft.com/azure/active-directory/conditional-access/concept-continuous-access-evaluation).
 - [X] Azure AD B2C
   - [X] Work with [user flows or custom policies in Azure AD B2C](https://docs.microsoft.com/azure/active-directory-b2c/user-flow-overview).
 - [ ] Google
