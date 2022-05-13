@@ -20,6 +20,11 @@ public static partial class AuthProxyConstants
         public const string RedirectCookies = "X-AuthProxy-RedirectCookies";
     }
 
+    public static class Actions
+    {
+        public const string Logout = "Logout";
+    }
+
     public static class Defaults
     {
         public const string TokenIssuer = "AuthProxy";

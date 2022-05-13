@@ -177,7 +177,7 @@ X-AuthProxy-RedirectCookies: ...
 
 Some decisions aren't static or configuration-driven, such as triggering a stronger form of authentication based on business logic (for example, requiring MFA when the user is about to confirm a financial transaction). The app can then instruct the proxy to perform certain functionality, for example by returning specific HTTP headers to the proxy to trigger an authentication challenge:
 
-- `X-AuthProxy-Action: Challenge`
+- `X-AuthProxy-Action: Logout`
 - `X-AuthProxy-ReturnUrl: /foo/bar`
 
 The proxy will see these headers coming back on the HTTP response and take appropriate action, for example by building the redirect URL for the IdP in this case, and returning a redirect response to the browser instead.
@@ -187,7 +187,7 @@ The proxy will see these headers coming back on the HTTP response and take appro
 To make it easier to build apps using the reverse proxy, a client SDK for all major runtimes/languages (.NET, Java, Python, Go, ...) can be foreseen to:
 
 - [X] Request information from the proxy (e.g. to [acquire a token](#token-api), or [perform an outbound call](#forward-api) for which the proxy attaches the token).
-- [ ] Trigger [dynamic actions](#dynamic-actions) by returning the right HTTP headers to the proxy.
+- [X] Trigger [dynamic actions](#dynamic-actions) by returning the right HTTP headers to the proxy.
 - [ ] Auto-wire certain common functionality with identity based information; for example: for .NET apps the SDK could set the [SqlConnection.AccessToken](https://docs.microsoft.com/dotnet/api/system.data.sqlclient.sqlconnection.accesstoken) property to a token acquired from the proxy.
 
 ### Configuration

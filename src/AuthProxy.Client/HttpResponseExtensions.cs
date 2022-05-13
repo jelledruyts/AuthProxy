@@ -46,4 +46,23 @@ public static class HttpResponseExtensions
         }
         return null;
     }
+
+    public static void SignalAuthProxyLogout(this HttpResponse response)
+    {
+        response.SignalAuthProxyLogout(null);
+    }
+
+    public static void SignalAuthProxyLogout(this HttpResponse response, string? returnUrl)
+    {
+        response.SignalAuthProxyAction(AuthProxyConstants.Actions.Logout);
+        if (returnUrl != null)
+        {
+            response.Headers.Add(AuthProxyConstants.HttpHeaderNames.ReturnUrl, returnUrl);
+        }
+    }
+
+    public static void SignalAuthProxyAction(this HttpResponse response, string action)
+    {
+        response.Headers.Add(AuthProxyConstants.HttpHeaderNames.Action, action);
+    }
 }

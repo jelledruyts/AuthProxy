@@ -75,7 +75,7 @@ public class BackendAppYarpHttpTransformer : BaseHttpTransformer
         if (proxyResponse != null)
         {
             var action = proxyResponse.Headers.GetValueOrDefault(AuthProxyConstants.HttpHeaderNames.Action);
-            if (string.Equals(action, "logout", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(action, AuthProxyConstants.Actions.Logout, StringComparison.OrdinalIgnoreCase))
             {
                 httpContext.Response.Clear();
                 var returnUrl = proxyResponse.Headers.GetValueOrDefault(AuthProxyConstants.HttpHeaderNames.ReturnUrl) ?? "/";
