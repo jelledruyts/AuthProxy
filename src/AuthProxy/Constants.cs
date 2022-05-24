@@ -6,7 +6,8 @@ public static class Constants
 {
     public static class Defaults
     {
-        public const string AuthenticationCookieName = ".AuthProxy";
+        public const string CookiePrefix = ".AuthProxy.";
+        public const string AuthenticationCookieName = CookiePrefix + "Authentication";
         public const bool AuthenticationCookieIsPersistent = false;
         public static readonly TimeSpan TokenIssuerExpiration = TimeSpan.FromHours(1);
         public const string ApiBasePath = ".auth/api";

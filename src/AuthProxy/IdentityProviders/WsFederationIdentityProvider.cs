@@ -19,6 +19,7 @@ public class WsFederationIdentityProvider : IdentityProvider
             // Set main options.
             options.MetadataAddress = this.Configuration.Authority; // The configuration's Authority should refer to the WS-Federation metadata document.
             options.Wtrealm = this.Configuration.ClientId; // The configuration's ClientId should refer to the "wtrealm" of the WS-Federation app.
+            options.CorrelationCookie.Name = Constants.Defaults.CookiePrefix + "WsFederation.Correlation";
 
             // Set token validation parameters.
             options.TokenValidationParameters.ValidAudiences = this.Configuration.AllowedAudiences; // TODO: Warn if there are no valid audiences configured.

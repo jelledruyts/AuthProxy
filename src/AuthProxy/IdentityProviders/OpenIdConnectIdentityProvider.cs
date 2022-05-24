@@ -30,6 +30,8 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
             options.ClientId = this.Configuration.ClientId;
             options.ClientSecret = this.Configuration.ClientSecret;
             options.CallbackPath = this.LoginCallbackPath; // Note that the callback path must be unique per identity provider.
+            options.NonceCookie.Name = Constants.Defaults.CookiePrefix + "OpenIdConnect.Nonce";
+            options.CorrelationCookie.Name = Constants.Defaults.CookiePrefix + "OpenIdConnect.Correlation";
 
             // By default, request "code id_token" to retrieve an authorization code along with the id_token.
             // In case no access token is ever needed, this can be overridden in configuration to simply use "id_token"

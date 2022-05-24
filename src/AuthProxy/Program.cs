@@ -46,7 +46,6 @@ JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // Don't map any sta
 var authenticationBuilder = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme);
 authenticationBuilder.AddCookie(options =>
 {
-    // TODO: Also rename other cookies (.AspNetCore.* for correlation and nonce for example)
     options.Cookie.Name = authProxyConfig.Authentication.Cookie.Name;
     options.Events = new CookieAuthenticationEvents
     {
