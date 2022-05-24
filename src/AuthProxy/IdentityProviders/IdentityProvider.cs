@@ -9,7 +9,8 @@ namespace AuthProxy.IdentityProviders;
 public abstract class IdentityProvider
 {
     public IdentityProviderConfig Configuration { get; }
-    public string AuthenticationScheme { get; }
+    public string AuthenticationScheme => this.AuthenticationSchemes.First();
+    public List<string> AuthenticationSchemes { get; } = new List<string>();
     public string LoginPath { get; }
     public string LoginCallbackPath { get; }
     public string PostLoginReturnUrlQueryParameterName { get; }
@@ -17,7 +18,7 @@ public abstract class IdentityProvider
     protected IdentityProvider(IdentityProviderConfig configuration, string authenticationScheme, string loginPath, string loginCallbackPath, string postLoginReturnUrlQueryParameterName)
     {
         this.Configuration = configuration;
-        this.AuthenticationScheme = authenticationScheme;
+        this.AuthenticationSchemes.Add(authenticationScheme);
         this.LoginPath = loginPath;
         this.LoginCallbackPath = loginCallbackPath;
         this.PostLoginReturnUrlQueryParameterName = postLoginReturnUrlQueryParameterName;
@@ -35,7 +36,7 @@ public abstract class IdentityProvider
         if (httpContext.User.Identity?.IsAuthenticated != true)
         {
             // The user isn't logged in, redirect to the identity provider and capture the return URL.
-            await httpContext.ChallengeAsync(this.AuthenticationScheme, new AuthenticationProperties { RedirectUri = returnUrl });
+            await ChallengeAsync(httpContext, returnUrl);
         }
         else
         {
@@ -43,6 +44,25 @@ public abstract class IdentityProvider
             httpContext.Response.StatusCode = (int)HttpStatusCode.Found;
             httpContext.Response.Headers.Location = returnUrl;
         }
+    }
+
+    public virtual async Task<bool> AttemptAuthenticateAsync(HttpContext httpContext)
+    {
+        foreach (var scheme in this.AuthenticationSchemes)
+        {
+            var result = await httpContext.AuthenticateAsync(scheme);
+            if (result.Succeeded)
+            {
+                httpContext.User = result.Principal;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public async Task ChallengeAsync(HttpContext httpContext, string? returnUrl = null)
+    {
+        await httpContext.ChallengeAsync(this.AuthenticationScheme, new AuthenticationProperties { RedirectUri = returnUrl });
     }
 
     protected virtual IList<string> GetDefaultClaimTransformations()

@@ -26,7 +26,7 @@ public static class AuthProxyServiceCollectionExtensions
         // Add the options so that it can be retrieved by other services.
         services.AddSingleton<AuthProxyOptions>(options);
 
-        // Add the HTTP context accessor service, which is needed for the HTTP message handler.
+        // Add the HTTP context accessor service, which is needed for the HTTP message handler and API client.
         services.AddHttpContextAccessor();
 
         // Add the HTTP message handler which can add the authorization for the proxy's API.

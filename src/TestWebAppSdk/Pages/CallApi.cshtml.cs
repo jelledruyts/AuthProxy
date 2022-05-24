@@ -69,7 +69,7 @@ public class CallApiModel : PageModel
         }
 
         // Use the API client to perform the token request.
-        var tokenResponse = await this.authProxyApiService.GetTokenAsync(this.HttpContext, request);
+        var tokenResponse = await this.authProxyApiService.GetTokenAsync(request);
 
         // If the API call failed to acquire a token, the request would automatically get
         // transformed into a redirect back to the IdP (which then also allows to acquire the token).

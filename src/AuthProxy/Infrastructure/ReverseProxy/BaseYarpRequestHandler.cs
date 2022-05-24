@@ -54,12 +54,6 @@ public abstract class BaseYarpRequestHandler
         return httpContext.Request.GetEncodedUrl();
     }
 
-    protected async Task<bool> ChallengeAsync(HttpContext httpContext, string scheme)
-    {
-        await httpContext.ChallengeAsync(scheme);
-        return false;
-    }
-
     protected async Task<bool> ForbiddenAsync(HttpContext httpContext)
     {
         httpContext.Response.StatusCode = (int)HttpStatusCode.Forbidden;

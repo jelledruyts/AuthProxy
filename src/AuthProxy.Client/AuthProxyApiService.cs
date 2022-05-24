@@ -9,13 +9,15 @@ namespace AuthProxy.Client;
 public class AuthProxyApiService
 {
     private readonly HttpClient httpClient;
+    private readonly IHttpContextAccessor httpContextAccessor;
     private readonly JsonSerializerOptions jsonSerializerOptions;
     public bool AutoRedirectWhenRequired { get; set; }
 
-    public AuthProxyApiService(HttpClient httpClient, AuthProxyOptions options)
+    public AuthProxyApiService(HttpClient httpClient, IHttpContextAccessor httpContextAccessor, AuthProxyOptions options)
     {
         ArgumentNullException.ThrowIfNull(options.BaseUrl);
         this.httpClient = httpClient;
+        this.httpContextAccessor = httpContextAccessor;
         this.AutoRedirectWhenRequired = options.AutoRedirectWhenRequired;
         this.httpClient.BaseAddress = new Uri(options.BaseUrl);
         this.jsonSerializerOptions = new JsonSerializerOptions
@@ -26,8 +28,12 @@ public class AuthProxyApiService
         this.jsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     }
 
-    public async Task<TokenResponse> GetTokenAsync(HttpContext httpContext, TokenRequest request)
+    public async Task<TokenResponse> GetTokenAsync(TokenRequest request)
     {
+        // Get the ambient HTTP context.
+        var httpContext = this.httpContextAccessor.HttpContext;
+        ArgumentNullException.ThrowIfNull(httpContext);
+
         // Retrieve the path to the Token API from the headers to avoid hard-coding it.
         var tokenApiPath = httpContext.Request.Headers[AuthProxyConstants.HttpHeaderNames.CallbackTokenEndpoint].First();
 

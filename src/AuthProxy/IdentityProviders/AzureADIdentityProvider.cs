@@ -66,9 +66,23 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
             if (request.Actor == null || request.Actor == Actor.User)
             {
                 var userAccount = await GetUserAccountAsync(httpContext.User, confidentialClientApplication);
+                var token = default(AuthenticationResult);
                 if (userAccount != null)
                 {
-                    var token = await confidentialClientApplication.AcquireTokenSilent(request.Scopes, userAccount).ExecuteAsync();
+                    // There is a cached user account, attempt to silently acquire a token.
+                    token = await confidentialClientApplication.AcquireTokenSilent(request.Scopes, userAccount).ExecuteAsync();
+                }
+                else
+                {
+                    // There is no cached user account, check if there is a bearer token.
+                    var bearerToken = httpContext.User.FindFirst(OpenIdConnectIdentityProvider.ClaimTypeBearerToken)?.Value;
+                    if (bearerToken != null)
+                    {
+                        token = await confidentialClientApplication.AcquireTokenOnBehalfOf(request.Scopes, new UserAssertion(bearerToken)).ExecuteAsync();
+                    }
+                }
+                if (token != null)
+                {
                     ValidateScopes(request.Scopes, token.Scopes);
                     return new TokenResponse { Status = TokenResponseStatus.Succeeded, Token = token.AccessToken };
                 }

@@ -2,6 +2,7 @@ using System.Net;
 using AuthProxy.Configuration;
 using AuthProxy.Models;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
@@ -9,6 +10,7 @@ namespace AuthProxy.IdentityProviders;
 
 public class OpenIdConnectIdentityProvider : IdentityProvider
 {
+    public const string ClaimTypeBearerToken = "bearer_token";
     private OpenIdConnectOptions? openIdConnectOptions;
 
     public OpenIdConnectIdentityProvider(IdentityProviderConfig config, string authenticationScheme, string loginPath, string loginCallbackPath, string postLoginReturnUrlQueryParameterName)
@@ -33,7 +35,7 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
             // In case no access token is ever needed, this can be overridden in configuration to simply use "id_token"
             // (in which case a client secret isn't even needed).
             options.ResponseType = this.Configuration.ResponseType;
-            
+
             // Default scopes are added automatically; add statically configured scopes for sign in.
             AddScopes(options.Scope, this.Configuration.SignInScopes);
 
@@ -43,12 +45,33 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
             // Handle events.
             options.Events = GetEvents();
         });
+
+        // Add a second authentication provider for Web APIs using the JWT bearer scheme.
+        var jwtBearerScheme = this.AuthenticationScheme + "-JwtBearer";
+        this.AuthenticationSchemes.Add(jwtBearerScheme);
+        authenticationBuilder.AddJwtBearer(jwtBearerScheme, options =>
+        {
+            // Set main options.
+            options.Authority = this.Configuration.Authority;
+
+            // Set token validation parameters.
+            options.TokenValidationParameters.ValidAudiences = this.Configuration.AllowedAudiences; // TODO: Warn if there are no valid audiences configured.
+
+            // Handle events.
+            options.Events = GetJwtBearerEvents();
+        });
     }
 
     protected virtual OpenIdConnectEvents GetEvents()
     {
         var claimsTransformer = GetClaimsTransformer();
         return new OpenIdConnectIdentityProviderEvents<OpenIdConnectIdentityProvider>(this, claimsTransformer);
+    }
+
+    protected virtual JwtBearerEvents GetJwtBearerEvents()
+    {
+        var claimsTransformer = GetClaimsTransformer();
+        return new OpenIdConnectIdentityProviderJwtBearerEvents<OpenIdConnectIdentityProvider>(this, claimsTransformer);
     }
 
     protected override IList<string> GetDefaultClaimTransformations()

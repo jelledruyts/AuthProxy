@@ -54,6 +54,19 @@
             }
         },
         {
+            "name": "TestWebApi",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/TestWebApi/bin/Debug/net6.0/TestWebApi.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/TestWebApi",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
             "name": ".NET Core Attach",
             "type": "coreclr",
             "request": "attach"
@@ -74,6 +87,15 @@
             "configurations": [
                 "AuthProxy",
                 "TestWebAppSdk"
+            ],
+            "preLaunchTask": "build",
+            "stopAll": true
+        },
+        {
+            "name": "Launch with TestWebApi",
+            "configurations": [
+                "AuthProxy",
+                "TestWebApi"
             ],
             "preLaunchTask": "build",
             "stopAll": true

@@ -73,6 +73,21 @@ public class IdentityProviderFactory
         return this.IdentityProviders.FirstOrDefault(i => i.Configuration.Name == name);
     }
 
+    public IdentityProvider GetRequiredIdentityProvider(string name)
+    {
+        var identityProvider = GetIdentityProvider(name);
+        if (identityProvider == null)
+        {
+            throw new ArgumentException($"An identity provider with name \"{name}\" was not configured.");
+        }
+        return identityProvider;
+    }
+
+    public IList<IdentityProvider> GetIdentityProviders(IEnumerable<string> names)
+    {
+        return names.Select(n => GetRequiredIdentityProvider(n)).ToList();
+    }
+
     private string GetDefaultLoginPath()
     {
         return this.authProxyConfig.Authentication.LoginPath;
