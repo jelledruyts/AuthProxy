@@ -23,6 +23,7 @@ public class WsFederationIdentityProvider : IdentityProvider
 
             // Set token validation parameters.
             options.TokenValidationParameters.ValidAudiences = this.Configuration.AllowedAudiences; // TODO: Warn if there are no valid audiences configured.
+            options.TokenValidationParameters.ValidIssuers = this.Configuration.AllowedIssuers;
 
             // Handle events.
             options.Events = GetEvents();

@@ -3,11 +3,13 @@ using AuthProxy.Configuration;
 using AuthProxy.Models;
 using Azure.Core;
 using Azure.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Validators;
 
 namespace AuthProxy.IdentityProviders;
 
@@ -20,12 +22,14 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
     public const string ClaimTypeHomeAccountId = "msal_accountid";
     private const string MsalUiRequiredExceptionErrorCodeRequestedScopeMissing = "requested_scope_missing"; // A custom error code to signal that a requested scope was not granted (likely because it was not previously consented to).
     private readonly string tenantId;
+    private readonly AadIssuerValidator issuerValidator;
 
     public AzureADIdentityProvider(IdentityProviderConfig configuration, string authenticationScheme, string loginPath, string loginCallbackPath, string postLoginReturnUrlQueryParameterName)
         : base(configuration, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName)
     {
         ArgumentNullException.ThrowIfNull(configuration.Authority);
         this.tenantId = GetTenantId(configuration.Authority);
+        this.issuerValidator = AadIssuerValidator.GetAadIssuerValidator(configuration.Authority);
     }
 
     protected virtual string GetTenantId(string authority)
@@ -46,6 +50,35 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
     {
         var claimsTransformer = GetClaimsTransformer();
         return new AzureADIdentityProviderEvents(this, claimsTransformer);
+    }
+
+    protected override void OnOptionsConfigured(OpenIdConnectOptions options)
+    {
+        // Use the Azure AD-specific issuer validator which knows how to deal with multi-tenant Azure AD and Azure AD B2C.
+        // Take special care with explicitly configured issuers that should be allowed, however.
+        // When the issuer is validated, it is checked against the statically configured allowed issuers, but
+        // also against the issuer which is retrieved from the OIDC metadata, and the Azure AD validator is
+        // explicitly aware of the "https://login.microsoftonline.com/{tenantid}/v2.0" issuer that is found in the OIDC
+        // metadata document of multi-tenant endpoints so that it "just works". However, this also means that
+        // the explicitly configured list is effectively ignored, because ANY issuer (tenant) is valid according to this
+        // "https://login.microsoftonline.com/{tenantid}/v2.0" issuer. For that reason, when there is an explicit
+        // configuration of allowed issuers, we don't use the Azure AD-specific issuer validator but we rely
+        // on the built-in validator which checks against the list and nothing more.
+        // See https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet/blob/dev/src/Microsoft.IdentityModel.Validators/AadIssuerValidator/AadIssuerValidator.cs
+        // and https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet/blob/dev/src/Microsoft.IdentityModel.Tokens/Validators.cs.
+        if (this.Configuration.AllowedIssuers == null || !this.Configuration.AllowedIssuers.Any())
+        {
+            options.TokenValidationParameters.IssuerValidator = this.issuerValidator.Validate;
+        }
+    }
+
+    protected override void OnOptionsConfigured(JwtBearerOptions options)
+    {
+        // See comments above.
+        if (this.Configuration.AllowedIssuers == null || !this.Configuration.AllowedIssuers.Any())
+        {
+            options.TokenValidationParameters.IssuerValidator = this.issuerValidator.Validate;
+        }
     }
 
     protected override IList<string> GetDefaultClaimTransformations()

@@ -12,6 +12,7 @@ public class IdentityProviderConfig
     public IList<string> SignInScopes { get; set; } = new List<string>(); // Defines scopes that are requested when the user is requested to sign in
     public IList<string> TokenRequestScopes { get; set; } = Constants.Defaults.TokenRequestScopes; // Defines scopes that are requested as part of a token request
     public IList<string> AllowedAudiences { get; set; } = new List<string>();
+    public IList<string> AllowedIssuers { get; set; } = new List<string>();
     public IList<string> ClaimTransformations { get; set; } = new List<string>();
     public IList<string> AdditionalParameters { get; set; } = new List<string>();
     public IList<string> AdditionalParametersForLogout { get; set; } = new List<string>();

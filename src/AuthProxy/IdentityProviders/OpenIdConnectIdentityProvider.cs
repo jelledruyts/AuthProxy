@@ -43,9 +43,13 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
 
             // Set token validation parameters.
             options.TokenValidationParameters.ValidAudiences = this.Configuration.AllowedAudiences; // TODO: Warn if there are no valid audiences configured.
+            options.TokenValidationParameters.ValidIssuers = this.Configuration.AllowedIssuers;
 
             // Handle events.
             options.Events = GetEvents();
+
+            // Allow customization of the options.
+            OnOptionsConfigured(options);
         });
 
         // Add a second authentication provider for Web APIs using the JWT bearer scheme.
@@ -58,9 +62,13 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
 
             // Set token validation parameters.
             options.TokenValidationParameters.ValidAudiences = this.Configuration.AllowedAudiences; // TODO: Warn if there are no valid audiences configured.
+            options.TokenValidationParameters.ValidIssuers = this.Configuration.AllowedIssuers;
 
             // Handle events.
             options.Events = GetJwtBearerEvents();
+
+            // Allow customization of the options.
+            OnOptionsConfigured(options);
         });
     }
 
@@ -70,10 +78,20 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
         return new OpenIdConnectIdentityProviderEvents<OpenIdConnectIdentityProvider>(this, claimsTransformer);
     }
 
+    protected virtual void OnOptionsConfigured(OpenIdConnectOptions options)
+    {
+        return;
+    }
+
     protected virtual JwtBearerEvents GetJwtBearerEvents()
     {
         var claimsTransformer = GetClaimsTransformer();
         return new OpenIdConnectIdentityProviderJwtBearerEvents<OpenIdConnectIdentityProvider>(this, claimsTransformer);
+    }
+
+    protected virtual void OnOptionsConfigured(JwtBearerOptions options)
+    {
+        return;
     }
 
     protected override IList<string> GetDefaultClaimTransformations()
