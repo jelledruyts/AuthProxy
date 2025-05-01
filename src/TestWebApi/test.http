@@ -1,5 +1,5 @@
 @token = ...
-#@token = {{$aadV2Token scopes:https://identitysamples.onmicrosoft.com/authproxytestwebapp/identity.read tenantid:identitysamples.onmicrosoft.com clientid:afb67e6a-e8c5-4a76-9a89-03d37da45f72}}
+#@token = {{$aadV2Token scopes:https://jelledruyts.onmicrosoft.com/authproxytestwebapp/identity.read tenantid:jelledruyts.onmicrosoft.com clientid:fb859816-0967-41eb-a59f-6a525d3fda8e}}
 
 ###
 
