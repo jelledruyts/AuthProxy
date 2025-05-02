@@ -56,8 +56,8 @@ public class BackendAppYarpRequestHandler : BaseYarpRequestHandler
                     if (inboundPolicy.IdentityProviders != null && inboundPolicy.IdentityProviders.Any())
                     {
                         var metadataIdentity = httpContext.User.GetIdentity(Constants.AuthenticationTypes.Metadata);
-                        var idpNameClaim = metadataIdentity?.FindFirst(Constants.ClaimTypes.Metadata.IdentityProviderName);
-                        if (idpNameClaim == null || !inboundPolicy.IdentityProviders.Contains(idpNameClaim.Value, StringComparer.OrdinalIgnoreCase))
+                        var idpIdClaim = metadataIdentity?.FindFirst(Constants.ClaimTypes.Metadata.IdentityProviderId);
+                        if (idpIdClaim == null || !inboundPolicy.IdentityProviders.Contains(idpIdClaim.Value, StringComparer.OrdinalIgnoreCase))
                         {
                             // The user was authenticated but NOT with one of the allowed IdPs specified on the policy.
                             // TODO: Allow configuration to decide what to do when authenticated but not with a matching IdP:

@@ -49,7 +49,7 @@ public class ExternalServiceYarpRequestHandler : BaseYarpRequestHandler
             this.Logger.LogWarning($"An outbound call to \"{destinationUrl}\" was requested but has no matching outbound policy configured.");
             return true;
         }
-        var profile = this.authProxyConfig.Authentication.TokenRequestProfiles.FirstOrDefault(p => string.Equals(p.Name, outboundPolicy.TokenRequestProfile, StringComparison.OrdinalIgnoreCase));
+        var profile = this.authProxyConfig.Authentication.TokenRequestProfiles.FirstOrDefault(p => string.Equals(p.Id, outboundPolicy.TokenRequestProfile, StringComparison.OrdinalIgnoreCase));
         if (profile == null)
         {
             // No token request profile was configured on the outbound policy, simply forward the request without further processing.

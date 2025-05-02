@@ -28,7 +28,7 @@ public class TokenController : ControllerBase
         if (!string.IsNullOrWhiteSpace(request.Profile))
         {
             // A configured token request profile was requested, look it up.
-            var profile = this.authProxyConfig.Authentication.TokenRequestProfiles.FirstOrDefault(p => string.Equals(p.Name, request.Profile, StringComparison.OrdinalIgnoreCase));
+            var profile = this.authProxyConfig.Authentication.TokenRequestProfiles.FirstOrDefault(p => string.Equals(p.Id, request.Profile, StringComparison.OrdinalIgnoreCase));
             if (profile == null)
             {
                 return BadRequest();

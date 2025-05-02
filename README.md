@@ -89,7 +89,7 @@ Next to that, the proxy also injects other HTTP headers towards the backend app,
 
 The proxy exposes an API at `/.auth/api/token` to allow the backend app to acquire tokens. It expects an HTTP GET request with a few parameters:
 
-- `identityProvider`: the reference name of the [configured IdP](#identity-providers) from which to acquire a token.
+- `identityProvider`: the id of the [configured IdP](#identity-providers) from which to acquire a token.
 - `actor`: indicates whether the token should be acquired on behalf of the user of the current request, on behalf of the app itself (using its client credentials), or other vendor-specific options (such as using [managed identities for Azure resources](https://docs.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview)).
 - `scopes`: defines which scopes should be requested when acquiring the token.
 - `returnUrl`: in case the token could not be silently acquired (for example, the user hasn't consented to the requested scopes yet, or MFA is required for some scopes), the proxy will return a redirect URL towards the IdP; it's then up to the app to redirect the browser to this URL. In such case the `returnUrl` specified here will be used to redirect the user back to after they have successfully authenticated with the IdP.
@@ -100,7 +100,7 @@ For an example of using the Token API, see the [CallApi](src/TestWebApp/Pages/Ca
 
 ##### Token API: Example Request
 
-The example below shows the backend app making a callback API request against the "token" endpoint. It has the authorization header set to the bearer token it received as an HTTP header from the proxy, and a request object which allows the proxy to acquire a token from `aad` (the reference name of the configured IdP), on behalf of the currently authenticated user, for a scope of `user.read` and with a specific return URL in case the token could not be acquired.
+The example below shows the backend app making a callback API request against the "token" endpoint. It has the authorization header set to the bearer token it received as an HTTP header from the proxy, and a request object which allows the proxy to acquire a token from `aad` (the id of the configured IdP), on behalf of the currently authenticated user, for a scope of `user.read` and with a specific return URL in case the token could not be acquired.
 
 ```http
 POST /.auth/api/token HTTP/1.1
@@ -221,7 +221,7 @@ You can configure the name of the authentication session cookie issued by the pr
 
 #### Identity Providers
 
-You can define one or more IdPs which the proxy can use to log users in or acquire tokens from. You give each IdP a reference name, so that you can refer to it in URLs and from other places like [token request profiles](#token-request-profiles). IdPs using any of the following identity protocols are supported:
+You can define one or more IdPs which the proxy can use to log users in or acquire tokens from. You give each IdP an id, so that you can refer to it in URLs and from other places like [token request profiles](#token-request-profiles). IdPs using any of the following identity protocols are supported:
 
 - [X] OpenID Connect
 - [X] WS-Federation
@@ -244,7 +244,7 @@ Furthermore, you can also define an IdP to be a specific type which allows the p
 
 Depending on the protocol or type of IdP, you configure the typical properties like its client ID and client secret, and which response type, scopes, audiences, ... to use.
 
-By default (but this can be changed in configuration as well), each IdP gets a login URL on the proxy at `/.auth/login/<name>`, for example `/.auth/login/aad` if the reference name of the IdP is `aad`. You can also configure a "default" IdP which simply uses `/.auth/login`.
+By default (but this can be changed in configuration as well), each IdP gets a login URL on the proxy at `/.auth/login/<id>`, for example `/.auth/login/aad` if the id of the IdP is `aad`. You can also configure a "default" IdP which simply uses `/.auth/login`.
 
 The proxy uses incoming claims from the IdP to generate the appropriate information that will be sent to the backend app. Each type of IdP has a default set of claims mappings, which can be further customized in configuration by using [claims transformations](#claims-transformations).
 
@@ -272,7 +272,7 @@ For example, you can use inbound policies to ensure requests for `/admin` need t
 
 When using the [Forward API](#forward-api), the backend app specifies the intended destination for which the proxy should attach a token.
 
-Each outbound policy specifies a URL pattern to match against the requested destination, an action to take (attaching a bearer token), and the name of the [token request profile](#token-request-profiles) which contains the details of the token to acquire.
+Each outbound policy specifies a URL pattern to match against the requested destination, an action to take (attaching a bearer token), and the id of the [token request profile](#token-request-profiles) which contains the details of the token to acquire.
 
 ### Claims Transformations
 
@@ -294,17 +294,17 @@ The following inputs can be used in transformations:
 
 - [X] `string['value']` or simply `'value'`: returns a constant string value.
 - [X] `claim[type]` or simply `type`: returns incoming claim values for the specified claim `type`.
-- [ ] `config[name]`: returns a configuration value.
-- [ ] `idp[name]`: returns information about the IdP that authenticated the user.
+- [ ] `config[key]`: returns a configuration value.
+- [ ] `idp[key]`: returns information about the IdP that authenticated the user.
 
-The following `config` names are available:
+The following `config` keys are available:
 
 - [ ] `config[issuer]`: the configured `issuer` value used by the proxy.
 - [ ] `config[audience]`: the configured `audience` value that represents the backend app.
 
-The following `idp` names are available:
+The following `idp` keys are available:
 
-- [ ] `idp[name]`: the `name` of the IdP that authenticated the user.
+- [ ] `idp[id]`: the `id` of the IdP that authenticated the user.
 - [ ] `idp[type]`: the `type` of the IdP that authenticated the user.
 
 Note that if there are multiple claim values for a claim type in the expression, or even multiple claim types in the expression which each have multiple claim values, the output claim will have values for the Cartesian product of all input claim values. See the examples below for details.
@@ -342,7 +342,7 @@ The following example expressions can be constructed:
 | `sub=sub + '@' + iss`                        | `{ "sub": "user123@https://example.org" }`                                                                                     | Concatenates the original `sub` claim with an `@` character and the `iss` claim     |
 | `scp=split(scp, ' ')`                        | `{ "scp": [ "openid", "profile", "email" ] }`                                                                                  | Splits values of the `scp` claim by a space into multiple `scp` claims              |
 | `roles=join(roles, ' ')`                     | `{ "roles": "reader writer" }`                                                                                                 | Joins multiple  `roles` claims into a single `roles` value separated by a space     |
-| `idp=idp[name]`                              | `{ "idp": "example.org" }`                                                                                                     | Returns the name of the IdP that authenticated the user as the `idp` claim          |
+| `idp=idp[id]`                                | `{ "idp": "aad" }`                                                                                                             | Returns the id of the IdP that authenticated the user as the `idp` claim            |
 | `scopes-roles=split(scp, ' ') + '-' + roles` | `{ "scopes-roles": [ "openid-reader", "openid-writer", "profile-reader", "profile-writer", "email-reader", "email-writer" ] }` | Returns the Cartesian product of all the (split) scopes and roles                   |
 
 ## Related Projects

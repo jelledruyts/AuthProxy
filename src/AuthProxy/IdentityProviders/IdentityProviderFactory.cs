@@ -11,24 +11,24 @@ public class IdentityProviderFactory
     public IdentityProviderFactory(AuthProxyConfig authProxyConfig)
     {
         this.authProxyConfig = authProxyConfig;
-        // TODO: Ensure IdentityProvider's Name is acceptable in URLs, unique across other IdPs and does not conflict with the default authentication scheme (Defaults.AuthenticationScheme)
+        // TODO: Ensure IdentityProvider's id is acceptable in URLs, unique across other IdPs and does not conflict with the default authentication scheme (Defaults.AuthenticationScheme)
         // TODO: Ensure IdentityProvider's callback paths are unique across all configured IdPs and don't conflict with the default paths.
         if (authProxyConfig.Authentication.IdentityProviders != null && authProxyConfig.Authentication.IdentityProviders.Any())
         {
             var postLoginReturnUrlQueryParameterName = authProxyConfig.Authentication.PostLoginReturnUrlQueryParameterName;
 
-            // Add an authentication service for each IdP (e.g. "/.auth/login/<name>").
+            // Add an authentication service for each IdP (e.g. "/.auth/login/<id>").
             foreach (var identityProviderConfig in authProxyConfig.Authentication.IdentityProviders)
             {
-                ArgumentNullException.ThrowIfNull(identityProviderConfig.Name);
-                var authenticationScheme = identityProviderConfig.Name;
+                ArgumentNullException.ThrowIfNull(identityProviderConfig.Id);
+                var authenticationScheme = identityProviderConfig.Id;
                 var loginPath = GetLoginPath(identityProviderConfig);
                 var loginCallbackPath = GetLoginCallbackPath(identityProviderConfig);
                 var identityProvider = CreateIdentityProvider(identityProviderConfig, authenticationScheme, loginPath, loginCallbackPath, postLoginReturnUrlQueryParameterName);
                 this.IdentityProviders.Add(identityProvider);
             }
 
-            var defaultIdentityProvider = this.IdentityProviders.FirstOrDefault(i => string.Equals(i.Configuration.Name, authProxyConfig.Authentication.DefaultIdentityProvider, StringComparison.OrdinalIgnoreCase));
+            var defaultIdentityProvider = this.IdentityProviders.FirstOrDefault(i => string.Equals(i.Configuration.Id, authProxyConfig.Authentication.DefaultIdentityProvider, StringComparison.OrdinalIgnoreCase));
             if (defaultIdentityProvider != null)
             {
                 // Add an authentication service for the default IdP (e.g. "/.auth/login").
@@ -68,24 +68,24 @@ public class IdentityProviderFactory
         }
     }
 
-    public IdentityProvider? GetIdentityProvider(string? name)
+    public IdentityProvider? GetIdentityProvider(string? id)
     {
-        return this.IdentityProviders.FirstOrDefault(i => i.Configuration.Name == name);
+        return this.IdentityProviders.FirstOrDefault(i => i.Configuration.Id == id);
     }
 
-    public IdentityProvider GetRequiredIdentityProvider(string name)
+    public IdentityProvider GetRequiredIdentityProvider(string id)
     {
-        var identityProvider = GetIdentityProvider(name);
+        var identityProvider = GetIdentityProvider(id);
         if (identityProvider == null)
         {
-            throw new ArgumentException($"An identity provider with name \"{name}\" was not configured.");
+            throw new ArgumentException($"An identity provider with id \"{id}\" was not configured.");
         }
         return identityProvider;
     }
 
-    public IList<IdentityProvider> GetIdentityProviders(IEnumerable<string> names)
+    public IList<IdentityProvider> GetIdentityProviders(IEnumerable<string> ids)
     {
-        return names.Select(n => GetRequiredIdentityProvider(n)).ToList();
+        return ids.Select(n => GetRequiredIdentityProvider(n)).ToList();
     }
 
     private string GetDefaultLoginPath()
@@ -95,8 +95,8 @@ public class IdentityProviderFactory
 
     private string GetLoginPath(IdentityProviderConfig identityProvider)
     {
-        ArgumentNullException.ThrowIfNull(identityProvider.Name);
-        return GetPath(GetDefaultLoginPath(), identityProvider.LoginPath, identityProvider.Name);
+        ArgumentNullException.ThrowIfNull(identityProvider.Id);
+        return GetPath(GetDefaultLoginPath(), identityProvider.LoginPath, identityProvider.Id);
     }
 
     private string GetDefaultLoginCallbackPath()
@@ -106,11 +106,11 @@ public class IdentityProviderFactory
 
     private string GetLoginCallbackPath(IdentityProviderConfig identityProvider)
     {
-        ArgumentNullException.ThrowIfNull(identityProvider.Name);
-        return GetPath(GetDefaultLoginCallbackPath(), identityProvider.LoginCallbackPath, identityProvider.Name);
+        ArgumentNullException.ThrowIfNull(identityProvider.Id);
+        return GetPath(GetDefaultLoginCallbackPath(), identityProvider.LoginCallbackPath, identityProvider.Id);
     }
 
-    private string GetPath(string defaultPath, string? identityProviderPath, string identityProviderName)
+    private string GetPath(string defaultPath, string? identityProviderPath, string identityProviderId)
     {
         if (!string.IsNullOrWhiteSpace(identityProviderPath))
         {
@@ -119,9 +119,9 @@ public class IdentityProviderFactory
         else
         {
             // TODO: Support a replacement pattern in the default path,
-            // for example "/.auth/$(identityProviderName/)login" (note the '/')
-            // or "/.auth/login-$(identityProviderName)" (note the missing '/').
-            return defaultPath + "/" + identityProviderName;
+            // for example "/.auth/$(identityProviderId/)login" (note the '/')
+            // or "/.auth/login-$(identityProviderId)" (note the missing '/').
+            return defaultPath + "/" + identityProviderId;
         }
     }
 }

@@ -94,7 +94,7 @@ app.UseAuthorization();
 // Map API controllers.
 app.MapControllers();
 
-// Map a login path per IdP (e.g. "/.auth/login/<name>").
+// Map a login path per IdP (e.g. "/.auth/login/<id>").
 foreach (var identityProvider in identityProviderFactory.IdentityProviders)
 {
     app.Map(identityProvider.LoginPath, identityProvider.RequestLoginAsync);

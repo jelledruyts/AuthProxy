@@ -37,7 +37,7 @@ public static class Constants
     {
         public static class Metadata
         {
-            public const string IdentityProviderName = "idp.name";
+            public const string IdentityProviderId = "idp.id";
             public const string IdentityProviderType = "idp.type";
         }
     }
