@@ -1,4 +1,3 @@
-using System.Runtime.Serialization;
 using AuthProxy.Models;
 
 namespace AuthProxy.Client;
@@ -22,10 +21,5 @@ public class AuthProxyTokenAcquisitionException : Exception
         : base(message, inner)
     {
         this.TokenResponse = tokenResponse;
-    }
-
-    protected AuthProxyTokenAcquisitionException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
     }
 }

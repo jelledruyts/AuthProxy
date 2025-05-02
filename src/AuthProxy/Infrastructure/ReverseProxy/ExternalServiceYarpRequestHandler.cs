@@ -86,11 +86,11 @@ public class ExternalServiceYarpRequestHandler : BaseYarpRequestHandler
             // The required token could not be acquired and a redirect is required, return redirect information back to caller via
             // HTTP response headers (as the response body is expected to match whatever the external service would have returned).
             httpContext.Response.StatusCode = (int)HttpStatusCode.NetworkAuthenticationRequired;
-            httpContext.Response.Headers.Add(AuthProxyConstants.HttpHeaderNames.Status, token.Status.ToString());
-            httpContext.Response.Headers.Add(AuthProxyConstants.HttpHeaderNames.RedirectUrl, token.RedirectUrl);
+            httpContext.Response.Headers.Append(AuthProxyConstants.HttpHeaderNames.Status, token.Status.ToString());
+            httpContext.Response.Headers.Append(AuthProxyConstants.HttpHeaderNames.RedirectUrl, token.RedirectUrl);
             if (token.RedirectCookies != null && token.RedirectCookies.Any())
             {
-                httpContext.Response.Headers.Add(AuthProxyConstants.HttpHeaderNames.RedirectCookies, (StringValues)token.RedirectCookies);
+                httpContext.Response.Headers.Append(AuthProxyConstants.HttpHeaderNames.RedirectCookies, (StringValues)token.RedirectCookies);
             }
             await httpContext.Response.CompleteAsync();
             return false;

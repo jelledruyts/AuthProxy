@@ -11,6 +11,10 @@ public static class AuthProxyServiceCollectionExtensions
     public static IServiceCollection AddAuthProxy(this IServiceCollection services, IConfiguration namedConfigurationSection)
     {
         var options = namedConfigurationSection.Get<AuthProxyOptions>();
+        if (options == null)
+        {
+            throw new ArgumentException(nameof(namedConfigurationSection), "The AuthProxy configuration section is missing or invalid.");
+        }
         return services.AddAuthProxy(options);
     }
 

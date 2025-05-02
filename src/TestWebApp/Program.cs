@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 
 // Don't map any standard OpenID Connect claims to Microsoft-specific claims
 // so that the actual claim types sent by the proxy are shown on the pages.
-JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -57,12 +57,12 @@ public static class HttpResponseExtensions
         response.SignalAuthProxyAction(AuthProxyConstants.Actions.Logout);
         if (returnUrl != null)
         {
-            response.Headers.Add(AuthProxyConstants.HttpHeaderNames.ReturnUrl, returnUrl);
+            response.Headers.Append(AuthProxyConstants.HttpHeaderNames.ReturnUrl, returnUrl);
         }
     }
 
     public static void SignalAuthProxyAction(this HttpResponse response, string action)
     {
-        response.Headers.Add(AuthProxyConstants.HttpHeaderNames.Action, action);
+        response.Headers.Append(AuthProxyConstants.HttpHeaderNames.Action, action);
     }
 }

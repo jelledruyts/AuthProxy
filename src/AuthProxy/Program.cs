@@ -9,9 +9,8 @@ using AuthProxy.Infrastructure.ReverseProxy;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
-// Don't change any incoming claims, let the claims transformer do that.
-JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
-JwtSecurityTokenHandler.DefaultOutboundClaimTypeMap.Clear();
+// Don't map any standard OpenID Connect claims to Microsoft-specific claims, let the claims transformer do that.
+JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 
 // Set up the web application and DI container.
 var builder = WebApplication.CreateBuilder(args);
@@ -38,9 +37,6 @@ builder.Services.AddSingleton<ExternalServiceYarpRequestHandler>();
 
 // TODO: Set up ASP.NET Core Data Protection to share encryption keys etc across multiple instances.
 // See https://docs.microsoft.com/en-us/aspnet/core/security/data-protection/configuration/overview.
-
-// Add authentication services.
-JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // Don't map any standard OpenID Connect claims to Microsoft-specific claims.
 
 // Add cookie authentication as the final user session provider.
 var authenticationBuilder = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme);

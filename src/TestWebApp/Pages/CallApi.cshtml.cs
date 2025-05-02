@@ -31,7 +31,12 @@ public class CallApiModel : PageModel
     {
         this.logger = logger;
         this.httpClientFactory = httpClientFactory;
-        this.authProxyBaseUrl = new Uri(configuration.GetValue<string>("AuthProxy:BaseUrl"));
+        var authProxyBaseUrlValue = configuration.GetValue<string>("AuthProxy:BaseUrl");
+        if (string.IsNullOrEmpty(authProxyBaseUrlValue))
+        {
+            throw new InvalidOperationException("The AuthProxy base URL is not configured.");
+        }
+        this.authProxyBaseUrl = new Uri(authProxyBaseUrlValue);
         this.jsonSerializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
         this.jsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     }
@@ -82,6 +87,10 @@ public class CallApiModel : PageModel
             // Retrieve the authorization token that Auth Proxy provided to call back into its own API.
             var authorizationHeaderName = this.HttpContext.Request.Headers["X-AuthProxy-Callback-AuthorizationHeader-Name"].First();
             var authorizationHeaderValue = this.HttpContext.Request.Headers["X-AuthProxy-Callback-AuthorizationHeader-Value"].First();
+            if (string.IsNullOrEmpty(authorizationHeaderName) || string.IsNullOrEmpty(authorizationHeaderValue))
+            {
+                throw new InvalidOperationException("The authorization header name or value is missing.");
+            }
             httpClient.DefaultRequestHeaders.Add(authorizationHeaderName, authorizationHeaderValue);
 
             // Perform the API call towards Auth Proxy.
@@ -143,6 +152,10 @@ public class CallApiModel : PageModel
             // Retrieve the authorization token that Auth Proxy provided to call back into its own API.
             var authorizationHeaderName = this.HttpContext.Request.Headers["X-AuthProxy-Callback-AuthorizationHeader-Name"].First();
             var authorizationHeaderValue = this.HttpContext.Request.Headers["X-AuthProxy-Callback-AuthorizationHeader-Value"].First();
+            if (string.IsNullOrEmpty(authorizationHeaderName) || string.IsNullOrEmpty(authorizationHeaderValue))
+            {
+                throw new InvalidOperationException("The authorization header name or value is missing.");
+            }
             httpClient.DefaultRequestHeaders.Add(authorizationHeaderName, authorizationHeaderValue);
 
             // Rather than going directly towards the destination URL, call the proxy's Forward API instead.
