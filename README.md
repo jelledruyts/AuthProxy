@@ -56,7 +56,9 @@ For maximum flexibility, the proxy can be deployed in many ways:
 - [X] As a self-hosted application (i.e. build and run the proxy however you want).
 - [ ] As a prebuilt container (such as a reverse proxy "sidecar" container deployed next to the backend app, for example as a service mesh in Kubernetes).
 - [ ] As a [Dapr](https://dapr.io/) component or middleware.
-- [ ] As built-in functionality of hosting platforms (for example, in theory it should be able to replace the proprietary [Azure App Service "Easy Auth"](https://docs.microsoft.com/azure/app-service/overview-authentication-authorization) functionality as a fully managed offering, by hosting this open source project directly on the platform in front of customer apps).
+- [ ] As built-in functionality of hosting platforms
+  - For example, in theory it should be able to replace the proprietary [Azure App Service "Easy Auth"](https://docs.microsoft.com/azure/app-service/overview-authentication-authorization) functionality as a fully managed offering, by hosting this open source project directly on the platform in front of customer apps.
+  - Well-known global reverse proxy services such as [Cloudflare](https://www.cloudflare.com/) or [Azure Front Door](https://learn.microsoft.com/azure/frontdoor/front-door-overview) capture the application traffic anyway, so they could also be good candidates to host it as a value-added offering.
 
 ### Security
 
@@ -196,9 +198,10 @@ For maximum flexibility, the proxy is intended to be *insanely configurable*. Fo
 
 All the necessary configuration can be provided via:
 
-- [X] Configuration files
+- [X] Application configuration
 - [X] Environment variables
 - [ ] An external API endpoint (which is called at startup)
+- [ ] Configuration files on the file system (or mounted into a container)
 
 For an example configuration file, see [appsettings.json](src/AuthProxy/appsettings.json).
 
@@ -339,7 +342,7 @@ The following example expressions can be constructed:
 | `sub=sub + '@' + iss`                        | `{ "sub": "user123@https://example.org" }`                                                                                     | Concatenates the original `sub` claim with an `@` character and the `iss` claim     |
 | `scp=split(scp, ' ')`                        | `{ "scp": [ "openid", "profile", "email" ] }`                                                                                  | Splits values of the `scp` claim by a space into multiple `scp` claims              |
 | `roles=join(roles, ' ')`                     | `{ "roles": "reader writer" }`                                                                                                 | Joins multiple  `roles` claims into a single `roles` value separated by a space     |
-| `idp=idp[name]`                              | `{ "idp": "example.org" }`                                                                                                     | Returns the name of the IdP that authenticated the user as the `idp-name` claim     |
+| `idp=idp[name]`                              | `{ "idp": "example.org" }`                                                                                                     | Returns the name of the IdP that authenticated the user as the `idp` claim          |
 | `scopes-roles=split(scp, ' ') + '-' + roles` | `{ "scopes-roles": [ "openid-reader", "openid-writer", "profile-reader", "profile-writer", "email-reader", "email-writer" ] }` | Returns the Cartesian product of all the (split) scopes and roles                   |
 
 ## Related Projects
