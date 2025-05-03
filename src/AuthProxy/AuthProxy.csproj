@@ -16,7 +16,7 @@
     <PackageReference Include="Microsoft.Identity.Web.TokenCache" Version="3.8.4" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens.Saml" Version="8.9.0" />
     <PackageReference Include="Microsoft.IdentityModel.Validators" Version="8.9.0" />
-    <PackageReference Include="Yarp.ReverseProxy" Version="1.1.2" />
+    <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
   </ItemGroup>
 
 </Project>

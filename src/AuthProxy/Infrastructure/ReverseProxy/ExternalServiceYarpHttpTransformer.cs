@@ -9,10 +9,10 @@ public class ExternalServiceYarpHttpTransformer : BaseHttpTransformer
     public const string ContextItemKeyOutboundPolicyAction = "X-AuthProxy-OutboundPolicyAction";
     public const string ContextItemKeyToken = "X-AuthProxy-Token";
 
-    public override async ValueTask TransformRequestAsync(HttpContext httpContext, HttpRequestMessage proxyRequest, string destinationPrefix)
+    public override async ValueTask TransformRequestAsync(HttpContext httpContext, HttpRequestMessage proxyRequest, string destinationPrefix, CancellationToken cancellationToken)
     {
         // Perform default behavior.
-        await base.TransformRequestAsync(httpContext, proxyRequest, destinationPrefix);
+        await base.TransformRequestAsync(httpContext, proxyRequest, destinationPrefix, cancellationToken);
 
         // Set the target URI to the requested destination.
         proxyRequest.RequestUri = (Uri)httpContext.Items[ContextItemKeyRequestUri]!;

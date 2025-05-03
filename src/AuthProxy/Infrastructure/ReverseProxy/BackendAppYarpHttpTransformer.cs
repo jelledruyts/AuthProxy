@@ -18,10 +18,10 @@ public class BackendAppYarpHttpTransformer : BaseHttpTransformer
         this.tokenIssuer = tokenIssuer;
     }
 
-    public override async ValueTask TransformRequestAsync(HttpContext httpContext, HttpRequestMessage proxyRequest, string destinationPrefix)
+    public override async ValueTask TransformRequestAsync(HttpContext httpContext, HttpRequestMessage proxyRequest, string destinationPrefix, CancellationToken cancellationToken)
     {
         // Perform default behavior.
-        await base.TransformRequestAsync(httpContext, proxyRequest, destinationPrefix);
+        await base.TransformRequestAsync(httpContext, proxyRequest, destinationPrefix, cancellationToken);
 
         // Remove auth cookie in the request towards the app as it's internal to the proxy.
         RemoveCookie(proxyRequest, this.authProxyConfig.Authentication.Cookie.Name);
@@ -68,7 +68,7 @@ public class BackendAppYarpHttpTransformer : BaseHttpTransformer
         }
     }
 
-    public override async ValueTask<bool> TransformResponseAsync(HttpContext httpContext, HttpResponseMessage? proxyResponse)
+    public override async ValueTask<bool> TransformResponseAsync(HttpContext httpContext, HttpResponseMessage? proxyResponse, CancellationToken cancellationToken)
     {
         // The app can communicate back to the proxy with response HTTP headers, which can then take action.
         // Only do this if there is no logical better alternative, like a direct inbound URL from the app (e.g. "/.auth/logout").
@@ -87,7 +87,7 @@ public class BackendAppYarpHttpTransformer : BaseHttpTransformer
         }
 
         // Perform default behavior.
-        var shouldProxy = await base.TransformResponseAsync(httpContext, proxyResponse);
+        var shouldProxy = await base.TransformResponseAsync(httpContext, proxyResponse, cancellationToken);
 
         if (shouldProxy)
         {

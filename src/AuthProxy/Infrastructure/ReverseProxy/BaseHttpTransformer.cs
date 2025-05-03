@@ -14,10 +14,10 @@ public abstract class BaseHttpTransformer : HttpTransformer
     /// <param name="httpContext">The incoming request.</param>
     /// <param name="proxyRequest">The outgoing proxy request.</param>
     /// <param name="destinationPrefix">The uri prefix for the selected destination server which can be used to create the RequestUri.</param>
-    public override async ValueTask TransformRequestAsync(HttpContext httpContext, HttpRequestMessage proxyRequest, string destinationPrefix)
+    public override async ValueTask TransformRequestAsync(HttpContext httpContext, HttpRequestMessage proxyRequest, string destinationPrefix, CancellationToken cancellationToken)
     {
         // Perform default behavior.
-        await HttpTransformer.Default.TransformRequestAsync(httpContext, proxyRequest, destinationPrefix);
+        await HttpTransformer.Default.TransformRequestAsync(httpContext, proxyRequest, destinationPrefix, cancellationToken);
     }
 
     /// <summary>
@@ -31,10 +31,10 @@ public abstract class BaseHttpTransformer : HttpTransformer
     /// <returns>A bool indicating if the response should be proxied to the client or not. A derived implementation 
     /// that returns false may send an alternate response inline or return control to the caller for it to retry, respond, 
     /// etc.</returns>
-    public override ValueTask<bool> TransformResponseAsync(HttpContext httpContext, HttpResponseMessage? proxyResponse)
+    public override ValueTask<bool> TransformResponseAsync(HttpContext httpContext, HttpResponseMessage? proxyResponse, CancellationToken cancellationToken)
     {
         // Perform default behavior.
-        return HttpTransformer.Default.TransformResponseAsync(httpContext, proxyResponse);
+        return HttpTransformer.Default.TransformResponseAsync(httpContext, proxyResponse, cancellationToken);
     }
 
     /// <summary>
@@ -43,9 +43,9 @@ public abstract class BaseHttpTransformer : HttpTransformer
     /// </summary>
     /// <param name="httpContext">The incoming request.</param>
     /// <param name="proxyResponse">The response from the destination.</param>
-    public override ValueTask TransformResponseTrailersAsync(HttpContext httpContext, HttpResponseMessage proxyResponse)
+    public override ValueTask TransformResponseTrailersAsync(HttpContext httpContext, HttpResponseMessage proxyResponse, CancellationToken cancellationToken)
     {
         // Perform default behavior.
-        return HttpTransformer.Default.TransformResponseTrailersAsync(httpContext, proxyResponse);
+        return HttpTransformer.Default.TransformResponseTrailersAsync(httpContext, proxyResponse, cancellationToken);
     }
 }
