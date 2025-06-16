@@ -10,7 +10,7 @@ namespace AuthProxy.Controllers;
 // TODO: Make configurable whether or not to enable this API as this increases the attack surface of the proxy.
 [ApiController]
 [Route(ApiRoutingConvention.Placeholder + "/" + Constants.ApiPaths.Token)]
-[Authorize(AuthenticationSchemes = Constants.AuthenticationSchemes.AuthProxy)]
+[Authorize]
 public class TokenController : ControllerBase
 {
     private readonly AuthProxyConfig authProxyConfig;

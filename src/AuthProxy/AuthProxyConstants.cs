@@ -8,16 +8,17 @@ public static partial class AuthProxyConstants
 {
     public static class HttpHeaderNames
     {
-        public const string CallbackAuthorizationHeaderName = "X-AuthProxy-Callback-AuthorizationHeader-Name";
-        public const string CallbackAuthorizationHeaderValue = "X-AuthProxy-Callback-AuthorizationHeader-Value";
-        public const string CallbackTokenEndpoint = "X-AuthProxy-Callback-TokenEndpoint";
-        public const string CallbackForwardEndpoint = "X-AuthProxy-Callback-ForwardEndpoint";
-        public const string Action = "X-AuthProxy-Action";
-        public const string ReturnUrl = "X-AuthProxy-ReturnUrl";
-        public const string Destination = "X-AuthProxy-Destination";
-        public const string Status = "X-AuthProxy-Status";
-        public const string RedirectUrl = "X-AuthProxy-RedirectUrl";
-        public const string RedirectCookies = "X-AuthProxy-RedirectCookies";
+        private const string Prefix = "X-AuthProxy-";
+        public const string CallbackAuthorizationHeaderName = Prefix + "Callback-AuthorizationHeader-Name";
+        public const string CallbackAuthorizationHeaderValue = Prefix + "Callback-AuthorizationHeader-Value";
+        public const string CallbackTokenEndpoint = Prefix + "Callback-TokenEndpoint";
+        public const string CallbackForwardEndpoint = Prefix + "Callback-ForwardEndpoint";
+        public const string Action = Prefix + "Action";
+        public const string ReturnUrl = Prefix + "ReturnUrl";
+        public const string Destination = Prefix + "Destination";
+        public const string Status = Prefix + "Status";
+        public const string RedirectUrl = Prefix + "RedirectUrl";
+        public const string RedirectCookies = Prefix + "RedirectCookies";
     }
 
     public static class Actions

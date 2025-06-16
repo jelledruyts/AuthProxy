@@ -84,7 +84,7 @@ public class CallApiModel : PageModel
             var httpClient = this.httpClientFactory.CreateClient();
             httpClient.BaseAddress = this.authProxyBaseUrl;
 
-            // Retrieve the authorization token that Auth Proxy provided to call back into its own API.
+            // Retrieve the authorization header that Auth Proxy provided to call back into its own API.
             var authorizationHeaderName = this.HttpContext.Request.Headers["X-AuthProxy-Callback-AuthorizationHeader-Name"].First();
             var authorizationHeaderValue = this.HttpContext.Request.Headers["X-AuthProxy-Callback-AuthorizationHeader-Value"].First();
             if (string.IsNullOrEmpty(authorizationHeaderName) || string.IsNullOrEmpty(authorizationHeaderValue))
@@ -149,7 +149,7 @@ public class CallApiModel : PageModel
             // Get an HTTP client to call the destination service.
             var httpClient = this.httpClientFactory.CreateClient();
 
-            // Retrieve the authorization token that Auth Proxy provided to call back into its own API.
+            // Retrieve the authorization header that Auth Proxy provided to call back into its own API.
             var authorizationHeaderName = this.HttpContext.Request.Headers["X-AuthProxy-Callback-AuthorizationHeader-Name"].First();
             var authorizationHeaderValue = this.HttpContext.Request.Headers["X-AuthProxy-Callback-AuthorizationHeader-Value"].First();
             if (string.IsNullOrEmpty(authorizationHeaderName) || string.IsNullOrEmpty(authorizationHeaderValue))

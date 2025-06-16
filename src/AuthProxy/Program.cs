@@ -54,15 +54,6 @@ authenticationBuilder.AddCookie(options =>
     };
 });
 
-// Add inbound authentication using the self-issued roundtrip JWT token sent to the backend app.
-authenticationBuilder.AddJwtBearer(Constants.AuthenticationSchemes.AuthProxy, options =>
-{
-    // Trust JWT tokens that were issued from the local token issuer.
-    options.TokenValidationParameters.ValidAudience = TokenIssuer.ApiAudience;
-    options.TokenValidationParameters.ValidIssuer = tokenIssuer.Issuer;
-    options.TokenValidationParameters.IssuerSigningKeys = tokenIssuer.SigningCredentials.Select(c => c.Key).ToArray();
-});
-
 // Add an authentication service for each IdP.
 foreach (var identityProvider in identityProviderFactory.IdentityProviders)
 {

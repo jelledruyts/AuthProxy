@@ -8,7 +8,6 @@ namespace AuthProxy.Infrastructure;
 
 public class TokenIssuer
 {
-    public const string ApiAudience = "AuthProxy.API";
     private readonly TimeSpan expiration;
     private readonly JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
     public string Audience { get; }

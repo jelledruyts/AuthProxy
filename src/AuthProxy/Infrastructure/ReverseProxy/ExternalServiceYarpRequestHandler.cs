@@ -22,8 +22,9 @@ public class ExternalServiceYarpRequestHandler : BaseYarpRequestHandler
 
     protected override async Task<bool> ShouldForwardRequestAsync(HttpContext httpContext)
     {
-        // This is a reverse proxy request for an external service, authenticate a principal from the expected incoming API token.
-        var authenticateResult = await httpContext.AuthenticateAsync(Constants.AuthenticationSchemes.AuthProxy);
+        // This is a reverse proxy request for an external service, authenticate a principal
+        // from the incoming request as usual.
+        var authenticateResult = await httpContext.AuthenticateAsync();
         if (authenticateResult.Principal?.Identity == null || !authenticateResult.Principal.Identity.IsAuthenticated)
         {
             // This is an unauthenticated API call, reject the request.

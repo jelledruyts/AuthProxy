@@ -23,7 +23,7 @@ public static class ExtensionMethods
                     }
                     else if (parts.Length != 2)
                     {
-                        throw new ArgumentException($"Could not parse key/value pair: \"keyValue\".", nameof(keyValuePairs));
+                        throw new ArgumentException($"Could not parse key/value pair: \"{keyValue}\".", nameof(keyValuePairs));
                     }
                     else
                     {
