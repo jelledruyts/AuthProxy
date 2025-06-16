@@ -25,10 +25,10 @@ public class OpenIdConnectIdentityProviderJwtBearerEvents<TIdentityProvider> : J
         var bearerToken = context.SecurityToken as JwtSecurityToken;
         if (bearerToken != null && context.Principal != null)
         {
-            // Add the token as a claim to the roundtrip identity so it can be used to look up the original
+            // Add the token as a claim to the metadata identity so it can be used to look up the original
             // token later, for example to perform an On-Behalf-Of flow.
-            var roundTripIdentity = context.Principal.GetOrCreateIdentity(Constants.AuthenticationTypes.RoundTrip);
-            roundTripIdentity.AddClaim(new Claim(OpenIdConnectIdentityProvider.ClaimTypeBearerToken, bearerToken.RawData));
+            var metadataIdentity = context.Principal.GetOrCreateIdentity(Constants.AuthenticationTypes.Metadata);
+            metadataIdentity.AddClaim(new Claim(OpenIdConnectIdentityProvider.ClaimTypeBearerToken, bearerToken.RawData));
         }
     }
 }
