@@ -28,6 +28,11 @@ public class AuthProxyApiService
         this.jsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     }
 
+    public async Task<AuthProxyConfigMetadata> GetAuthProxyConfigurationAsync()
+    {
+        return await this.httpClient.GetFromJsonAsync<AuthProxyConfigMetadata>(AuthProxyConstants.UrlPaths.AuthProxyConfiguration, this.jsonSerializerOptions) ?? throw new InvalidOperationException("Failed to retrieve AuthProxy configuration.");
+    }
+
     public async Task<TokenResponse> GetTokenAsync(TokenRequest request)
     {
         // Get the ambient HTTP context.
@@ -38,7 +43,7 @@ public class AuthProxyApiService
         var tokenApiPath = httpContext.Request.Headers[AuthProxyConstants.HttpHeaderNames.CallbackTokenEndpoint].First();
 
         // Perform the API call towards the proxy.
-        var responseMessage = await httpClient.PostAsync(tokenApiPath, JsonContent.Create(request, null, jsonSerializerOptions));
+        var responseMessage = await this.httpClient.PostAsync(tokenApiPath, JsonContent.Create(request, null, jsonSerializerOptions));
         responseMessage.EnsureSuccessStatusCode();
         var responseBody = await responseMessage.Content.ReadAsStringAsync();
 

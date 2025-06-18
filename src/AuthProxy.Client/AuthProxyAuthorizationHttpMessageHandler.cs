@@ -18,14 +18,11 @@ public class AuthProxyAuthorizationHttpMessageHandler : DelegatingHandler
         ArgumentNullException.ThrowIfNull(this.httpContextAccessor.HttpContext);
         var httpContext = this.httpContextAccessor.HttpContext;
 
-        // Add the required authorization header for the proxy's callback API, which is injected on the incoming request.
-        var authorizationHeaderName = httpContext.Request.Headers[AuthProxyConstants.HttpHeaderNames.CallbackAuthorizationHeaderName].First();
-        var authorizationHeaderValue = httpContext.Request.Headers[AuthProxyConstants.HttpHeaderNames.CallbackAuthorizationHeaderValue].First();
-        if (string.IsNullOrEmpty(authorizationHeaderName) || string.IsNullOrEmpty(authorizationHeaderValue))
+        // Add the callback headers that Auth Proxy provided to call back into its own API.
+        foreach (var header in httpContext.Request.Headers.Where(h => h.Key.StartsWith(AuthProxyConstants.HttpHeaderNames.CallbackHeaderPrefix, StringComparison.OrdinalIgnoreCase)))
         {
-            throw new InvalidOperationException("The authorization header name or value is missing.");
+            request.Headers.Add(header.Key.Substring(AuthProxyConstants.HttpHeaderNames.CallbackHeaderPrefix.Length), header.Value.ToArray());
         }
-        request.Headers.Add(authorizationHeaderName, authorizationHeaderValue);
 
         // Send the request through the next handler.
         return await base.SendAsync(request, cancellationToken);

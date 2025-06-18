@@ -1,4 +1,5 @@
 using AuthProxy.Configuration;
+using AuthProxy.Models;
 
 namespace AuthProxy.IdentityProviders;
 

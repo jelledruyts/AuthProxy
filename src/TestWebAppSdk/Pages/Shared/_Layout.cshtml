@@ -1,4 +1,6 @@
-﻿<!DOCTYPE html>
+﻿@using AuthProxy.Client
+@inject AuthProxyApiService AuthProxyApiService
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -19,23 +21,37 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    @{
+                        // Dynamically load identity providers from the auth proxy configuration.
+                        // Fallback to at least offer the default login/logout links if the base path wasn't configured.
+                        var defaultLoginPath = "/.auth/login";
+                        var defaultLogoutPath = "/.auth/logout";
+                        var identityProviders = new List<KeyValuePair<string, string>>();
+                        var metadata = await AuthProxyApiService.GetAuthProxyConfigurationAsync();
+                        foreach (var identityProvider in metadata.Authentication.IdentityProviders)
+                        {
+                            if (!string.IsNullOrWhiteSpace(identityProvider.LoginPath) && !string.IsNullOrWhiteSpace(identityProvider.DisplayName))
+                            {
+                                identityProviders.Add(new KeyValuePair<string, string>(identityProvider.LoginPath, identityProvider.DisplayName));
+                            }
+                        }
+
+                    }
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownLogin" role="button" data-bs-toggle="dropdown" aria-expanded="false">Login</a>
                             <ul class="dropdown-menu" aria-labelledby="navbarDropdownLogin">
-                                <li><a class="dropdown-item" href="~/.auth/login">Login (Default)</a></li>
-                                <li><a class="dropdown-item" href="~/.auth/login/aad">Login (AAD/OIDC)</a></li>
-                                <li><a class="dropdown-item" href="~/.auth/login/aad-multitenant">Login (AAD/Multi-Tenant)</a></li>
-                                <li><a class="dropdown-item" href="~/.auth/login/aad-wsfed">Login (AAD/WS-Federation)</a></li>
-                                <li><a class="dropdown-item" href="~/.auth/login/b2c">Login (B2C)</a></li>
-                                <li><a class="dropdown-item" href="~/.auth/login/auth0">Login (Auth0)</a></li>
-                                <li><a class="dropdown-item" href="~/.auth/login/idsrv">Login (IdentityServer)</a></li>
+                                <li><a class="dropdown-item" href="@defaultLoginPath">Login (Default)</a></li>
+                                @foreach (var identityProvider in identityProviders)
+                                {
+                                    <li><a class="dropdown-item" href="@identityProvider.Key" )">Login (@identityProvider.Value)</a></li>
+                                }
                             </ul>
                         </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownLogout" role="button" data-bs-toggle="dropdown" aria-expanded="false">Logout</a>
                             <ul class="dropdown-menu" aria-labelledby="navbarDropdownLogout">
-                                <li><a class="dropdown-item" href="~/.auth/logout">Logout</a></li>
+                                <li><a class="dropdown-item" href="@defaultLogoutPath">Logout</a></li>
                                 <li><a class="dropdown-item" asp-page="/Logout">Logout (Header)</a></li>
                             </ul>
                         </li>

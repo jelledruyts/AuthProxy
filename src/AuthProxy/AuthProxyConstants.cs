@@ -9,8 +9,7 @@ public static partial class AuthProxyConstants
     public static class HttpHeaderNames
     {
         private const string Prefix = "X-AuthProxy-";
-        public const string CallbackAuthorizationHeaderName = Prefix + "Callback-AuthorizationHeader-Name";
-        public const string CallbackAuthorizationHeaderValue = Prefix + "Callback-AuthorizationHeader-Value";
+        public const string CallbackHeaderPrefix = Prefix + "Callback-Header-";
         public const string CallbackTokenEndpoint = Prefix + "Callback-TokenEndpoint";
         public const string CallbackForwardEndpoint = Prefix + "Callback-ForwardEndpoint";
         public const string Action = Prefix + "Action";
@@ -32,5 +31,10 @@ public static partial class AuthProxyConstants
         public const string TokenAudience = "AuthProxy.BackendApp";
         public const string NameClaimType = "name";
         public const string RoleClaimType = "roles";
+    }
+
+    public static class UrlPaths
+    {
+        public const string AuthProxyConfiguration = "/.well-known/authproxy-configuration";
     }
 }

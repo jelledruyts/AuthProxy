@@ -149,7 +149,7 @@ public class OpenIdConnectIdentityProvider : IdentityProvider
             var token = await tokenManagementService.GetAccessTokenAsync(httpContext.User, parameters);
             if (string.IsNullOrWhiteSpace(token.AccessToken))
             {
-                return TokenResponse.Failed(token.Error);
+                return await GetTokenResponseForRedirectAsync(httpContext, request);
             }
             else
             {

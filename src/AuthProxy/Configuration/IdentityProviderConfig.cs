@@ -1,9 +1,12 @@
+using AuthProxy.Models;
+
 namespace AuthProxy.Configuration;
 
 public class IdentityProviderConfig
 {
     public string? Id { get; set; }
     public IdentityProviderType Type { get; set; } = IdentityProviderType.OpenIdConnect;
+    public string? DisplayName { get; set; }
     public string? Authority { get; set; }
     public string? ClientId { get; set; }
     public string? ClientSecret { get; set; } // TODO: ClientSecretEnvVarName/Reference/...?

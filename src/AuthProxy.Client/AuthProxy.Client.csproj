@@ -13,7 +13,12 @@
 
   <ItemGroup>
     <Compile Include="../AuthProxy/Models/Actor.cs" />
+    <Compile Include="../AuthProxy/Models/AuthenticationConfigMetadata.cs" />
+    <Compile Include="../AuthProxy/Models/AuthProxyConfigMetadata.cs" />
+    <Compile Include="../AuthProxy/Models/IdentityProviderConfigMetadata.cs" />
+    <Compile Include="../AuthProxy/Models/IdentityProviderType.cs" />
     <Compile Include="../AuthProxy/Models/TokenRequest.cs" />
+    <Compile Include="../AuthProxy/Models/TokenRequestProfileConfigMetadata.cs" />
     <Compile Include="../AuthProxy/Models/TokenResponse.cs" />
     <Compile Include="../AuthProxy/Models/TokenResponseStatus.cs" />
     <Compile Include="../AuthProxy/AuthProxyConstants.cs" />

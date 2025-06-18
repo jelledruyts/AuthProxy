@@ -8,6 +8,7 @@ namespace AuthProxy.Infrastructure;
 
 public class TokenIssuer
 {
+    public const string ApiAudience = "AuthProxy.API";
     private readonly TimeSpan expiration;
     private readonly JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
     public string Audience { get; }
@@ -34,6 +35,16 @@ public class TokenIssuer
 
     public string CreateToken(ClaimsIdentity identity, string? audience = null)
     {
+        return CreateToken(identity.Claims, audience);
+    }
+
+    public string CreateToken(IEnumerable<Claim> claims, string? audience = null)
+    {
+        return CreateToken(claims.DistinctBy(c => c.Type).ToDictionary(c => c.Type, c => (object)c.Value), audience);
+    }
+
+    public string CreateToken(IDictionary<string, object> claims, string? audience = null)
+    {
         var nowUtc = DateTime.UtcNow;
         var issuedUtc = nowUtc.AddMinutes(-5); // Account for clock skew.
 
@@ -45,7 +56,7 @@ public class TokenIssuer
             Issuer = this.Issuer,
             NotBefore = issuedUtc,
             SigningCredentials = this.SigningCredentials.First(),
-            Subject = identity
+            Claims = claims
         };
 
         var token = this.tokenHandler.CreateToken(tokenDescriptor);

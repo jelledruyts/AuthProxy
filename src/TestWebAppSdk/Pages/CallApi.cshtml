@@ -17,6 +17,13 @@
         <div class="mb-3">
             <label for="tokenRequestProfile" class="form-label">Profile</label>
             <input type="text" class="form-control" id="tokenRequestProfile" name="tokenRequestProfile" value="@Model.TokenRequestProfile">
+            <div class="form-text">
+                Tip! The following profiles are configured:
+                @foreach (var profile in Model.AvailableTokenRequestProfiles)
+                {
+                    <span class="badge bg-secondary">@profile</span>
+                }
+            </div>
         </div>
         <button type="submit" class="btn btn-primary">Submit</button>
     </div>
@@ -28,6 +35,13 @@
         <div class="mb-3">
             <label for="tokenRequestIdentityProvider" class="form-label">Identity Provider</label>
             <input type="text" class="form-control" id="tokenRequestIdentityProvider" name="tokenRequestIdentityProvider" value="@Model.TokenRequestIdentityProvider">
+            <div class="form-text">
+                Tip! The following identity providers are configured:
+                @foreach (var provider in Model.AvailableIdentityProviders)
+                {
+                    <span class="badge bg-secondary">@provider</span>
+                }
+            </div>
         </div>
         <div class="mb-3">
             <label for="tokenRequestScopes" class="form-label">Scopes</label>
@@ -72,6 +86,11 @@
     <div class="mb-3">
         <label for="forwardCallDestinationUrl" class="form-label">Destination URL</label>
         <input type="text" class="form-control" id="forwardCallDestinationUrl" name="forwardCallDestinationUrl" value="@Model.ForwardCallDestinationUrl">
+        <div class="form-text">
+            Tip!
+            For AzureAD, you can use &quot;<code>https://graph.microsoft.com/v1.0/me</code>&quot; to get the current user's profile information.
+            For Duende Identity Server, you can use &quot;<code>https://demo.duendesoftware.com/api/test</code>&quot; as a test API.
+        </div>
     </div>
     <button type="submit" class="btn btn-primary">Submit</button>
 </form>

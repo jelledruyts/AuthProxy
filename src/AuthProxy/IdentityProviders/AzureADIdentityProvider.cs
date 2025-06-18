@@ -3,6 +3,7 @@ using AuthProxy.Configuration;
 using AuthProxy.Models;
 using Azure.Core;
 using Azure.Identity;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http.Extensions;
@@ -98,7 +99,7 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
             var confidentialClientApplication = GetConfidentialClientApplication(httpContext);
             if (request.Actor == null || request.Actor == Actor.User)
             {
-                var userAccount = await GetUserAccountAsync(httpContext.User, confidentialClientApplication);
+                var userAccount = await GetUserAccountAsync(httpContext, confidentialClientApplication);
                 var token = default(AuthenticationResult);
                 if (userAccount != null)
                 {
@@ -108,6 +109,7 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
                 else
                 {
                     // There is no cached user account, check if there is a bearer token.
+                    // TODO-H: Check if this still works, and if the original bearer token can't be retrieved from the "saved" tokens.
                     var bearerToken = httpContext.User.FindFirst(OpenIdConnectIdentityProvider.ClaimTypeBearerToken)?.Value;
                     if (bearerToken != null)
                     {
@@ -154,12 +156,19 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
     public virtual async Task RemoveUserAsync(HttpContext httpContext)
     {
         var confidentialClientApplication = GetConfidentialClientApplication(httpContext);
-        var userAccount = await GetUserAccountAsync(httpContext.User, confidentialClientApplication);
+        var userAccount = await GetUserAccountAsync(httpContext, confidentialClientApplication);
         await confidentialClientApplication.RemoveAsync(userAccount);
     }
 
-    protected virtual async Task<IAccount?> GetUserAccountAsync(ClaimsPrincipal? user, IConfidentialClientApplication confidentialClientApplication)
+    protected virtual async Task<ClaimsPrincipal?> GetUserAsync(HttpContext httpContext)
     {
+        var user = await httpContext.AuthenticateAsync(this.AuthenticationScheme);
+        return user.Principal;
+    }
+
+    protected virtual async Task<IAccount?> GetUserAccountAsync(HttpContext httpContext, IConfidentialClientApplication confidentialClientApplication)
+    {
+        var user = await GetUserAsync(httpContext);
         if (user?.Identity != null && user.Identity.IsAuthenticated)
         {
             var accountId = user.FindFirst(ClaimTypeHomeAccountId)?.Value;

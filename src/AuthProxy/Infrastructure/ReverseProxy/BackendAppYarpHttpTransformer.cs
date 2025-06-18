@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text;
 using AuthProxy.Configuration;
 using Microsoft.AspNetCore.Authentication;
@@ -38,11 +39,25 @@ public class BackendAppYarpHttpTransformer : BaseHttpTransformer
         }
 
         // Remove the auth cookie in the request towards the app (as it's internal to the proxy)
-        // but inject it as a custom header so it can be sent back as part of a callback API request.
-        // TODO: Make configurable if and how to pass the cookie to the app; could also be disabled or in custom header with custom format.
+        // and add it as a callback header so the backend app can use it to authenticate the USER back to the proxy.
         var authCookie = RemoveCookie(proxyRequest, this.authProxyConfig.Authentication.Cookie.Name);
-        proxyRequest.Headers.Add(AuthProxyConstants.HttpHeaderNames.CallbackAuthorizationHeaderName, HeaderNames.Cookie);
-        proxyRequest.Headers.Add(AuthProxyConstants.HttpHeaderNames.CallbackAuthorizationHeaderValue, authCookie);
+        if (!string.IsNullOrWhiteSpace(authCookie))
+        {
+            proxyRequest.Headers.Add(AuthProxyConstants.HttpHeaderNames.CallbackHeaderPrefix + HeaderNames.Cookie, authCookie);
+        }
+
+        // Create a round-trip token that can be used by the backend app to authenticate the BACKEND APP back to the proxy.
+        // Although it would in theory be possible to use the authentication cookie ONLY for roundtrip
+        // authentication, this has several disadvantages:
+        // - The cookie is only present if there's an authenticated user, which is not always the case. Even without
+        //   an authenticated user, the backend app may want to communicate back to the proxy.
+        // - An end user (who can see the cookie) could use that same cookie to communicate directly with the proxy,
+        //   rather than through the backend app, which may disclose information that should not be accessible to an end user.
+        // Instead, we create a JWT issued by the proxy's internal token issuer, which is never sent back to the
+        // browser but is only seen by the backend app.
+        // TODO: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
+        var roundTripToken = this.tokenIssuer.CreateToken(Array.Empty<Claim>(), TokenIssuer.ApiAudience);
+        proxyRequest.Headers.Add(AuthProxyConstants.HttpHeaderNames.CallbackHeaderPrefix + HeaderNames.Authorization, $"{Constants.HttpHeaders.Bearer} {roundTripToken}");
 
         // Inject headers containing the callback API paths to avoid that the backend app has to hard-code these.
         // TODO: Make configurable if and how to pass this information; for example a configuration setting with the HTTP header name,

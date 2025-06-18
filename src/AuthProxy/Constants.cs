@@ -25,6 +25,7 @@ public static class Constants
     public static class AuthenticationSchemes
     {
         public const string DefaultIdentityProvider = "(default)";
+        public const string AuthProxy = nameof(AuthProxy);
     }
 
     public static class AuthenticationTypes
