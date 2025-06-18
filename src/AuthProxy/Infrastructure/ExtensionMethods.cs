@@ -35,6 +35,20 @@ public static class ExtensionMethods
         return result;
     }
 
+    public static string? GetScopeString(this IEnumerable<string>? scopeValues)
+    {
+        return scopeValues == null ? null : string.Join(' ', scopeValues);
+    }
+
+    public static IEnumerable<string> GetScopeValues(this string? scopeString)
+    {
+        if (string.IsNullOrEmpty(scopeString))
+        {
+            return Array.Empty<string>();
+        }
+        return scopeString.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
     public static void Merge(this IDictionary<string, string> target, IDictionary<string, string> source)
     {
         source.ToList().ForEach(x => target[x.Key] = x.Value);

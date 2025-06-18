@@ -22,6 +22,7 @@ public class CallApiModel : PageModel
     public string ForwardCallDestinationUrl { get; set; } = "https://graph.microsoft.com/v1.0/me";
     public string? InfoMessage { get; set; }
     public string? GetTokenResult { get; set; }
+    public string? ErrorMessage { get; set; }
     public string? ForwardCallResult { get; set; }
 
     public CallApiModel(ILogger<IndexModel> logger, IHttpClientFactory httpClientFactory, AuthProxyApiService authProxyApiService)
@@ -43,37 +44,55 @@ public class CallApiModel : PageModel
         this.ForwardCallDestinationUrl = this.Request.Query[nameof(ForwardCallDestinationUrl)].FirstOrDefault() ?? this.ForwardCallDestinationUrl;
     }
 
-    public async Task<IActionResult> OnPostGetToken()
+    public Task<IActionResult> OnPostGetTokenUsingProfile()
+    {
+        var request = new TokenRequest
+        {
+            Profile = this.TokenRequestProfile
+        };
+        return this.GetToken(request);
+    }
+
+    public Task<IActionResult> OnPostGetTokenManual()
+    {
+        var request = new TokenRequest
+        {
+            IdentityProvider = this.TokenRequestIdentityProvider,
+            Actor = this.TokenRequestActor,
+            Scopes = this.TokenRequestScopes?.Split(" ")
+        };
+        return this.GetToken(request);
+    }
+
+    private async Task<IActionResult> GetToken(TokenRequest request)
     {
         // If a redirect would be necessary, make the redirect URL return back to this page
         // with additional query parameters to remember the original request values.
-        var returnUrl = this.Url.Page("CallApi", null, new
+        request.ReturnUrl = this.Url.Page("CallApi", null, new
         {
             TokenRequestProfile = this.TokenRequestProfile,
             TokenRequestIdentityProvider = this.TokenRequestIdentityProvider,
             TokenRequestScopes = this.TokenRequestScopes
         });
 
-        // Prepare the token request for the Auth Proxy API.
-        var request = new TokenRequest { ReturnUrl = returnUrl };
-        if (!string.IsNullOrWhiteSpace(this.TokenRequestProfile))
-        {
-            // A token request profile was requested, don't specify the other properties.
-            request.Profile = this.TokenRequestProfile;
-        }
-        else
-        {
-            request.IdentityProvider = this.TokenRequestIdentityProvider;
-            request.Actor = this.TokenRequestActor;
-            request.Scopes = this.TokenRequestScopes?.Split(" ");
-        }
-
         // Use the API client to perform the token request.
         var tokenResponse = await this.authProxyApiService.GetTokenAsync(request);
-
-        // If the API call failed to acquire a token, the request would automatically get
-        // transformed into a redirect back to the IdP (which then also allows to acquire the token).
-        this.GetTokenResult = tokenResponse.Token;
+        if (tokenResponse.Status == TokenResponseStatus.RedirectRequired)
+        {
+            // If the API call failed to acquire a token because a redirect was required, the request would automatically
+            // get transformed into a redirect back to the IdP (which then also allows to acquire the token).
+        }
+        else if (tokenResponse.Status == TokenResponseStatus.Succeeded)
+        {
+            // The token request succeeded, output the token itself (in a real world scenario, the token would
+            // be used to call a backend API of course).
+            this.GetTokenResult = tokenResponse.Token;
+        }
+        else if (tokenResponse.Status == TokenResponseStatus.Failed)
+        {
+            // The token request failed, show the error message.
+            this.ErrorMessage = tokenResponse.ErrorMessage;
+        }
 
         return Page();
     }

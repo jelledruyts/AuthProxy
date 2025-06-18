@@ -18,6 +18,8 @@ public static class Constants
         public const string PostLoginReturnUrlQueryParameterName = "returnUrl"; // NOTE: App Service EasyAuth uses "post_login_redirect_uri".
         public const string LogoutPath = "/.auth/logout";
         public const string PostLogoutReturnUrlQueryParameterName = "returnUrl"; // NOTE: App Service EasyAuth uses "post_logout_redirect_uri".
+        public const bool UsePkce = true; // Use PKCE by default unless overridden in configuration
+        public const bool GetClaimsFromUserInfoEndpoint = false; // Don't get claims from the UserInfo endpoint by default unless overridden in configuration
     }
 
     public static class AuthenticationSchemes
@@ -27,8 +29,9 @@ public static class Constants
 
     public static class AuthenticationTypes
     {
-        public const string Metadata = "AuthProxy-Metadata";
-        public const string BackendApp = "AuthProxy-BackendApp";
+        public const string Metadata = "AuthProxy.Metadata";
+        public const string BackendApp = "AuthProxy.BackendApp";
+        public const string UserInfo = "AuthProxy.UserInfo";
     }
 
     public static class ClaimTypes

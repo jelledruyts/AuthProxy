@@ -117,19 +117,19 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
                 if (token != null)
                 {
                     ValidateScopes(request.Scopes, token.Scopes);
-                    return new TokenResponse { Status = TokenResponseStatus.Succeeded, Token = token.AccessToken };
+                    return TokenResponse.Succeeded(token.AccessToken);
                 }
             }
             else if (request.Actor == Actor.App)
             {
                 var token = await confidentialClientApplication.AcquireTokenForClient(request.Scopes).ExecuteAsync();
-                return new TokenResponse { Status = TokenResponseStatus.Succeeded, Token = token.AccessToken };
+                return TokenResponse.Succeeded(token.AccessToken);
             }
             else if (request.Actor == Actor.AzureManagedIdentity)
             {
                 ArgumentNullException.ThrowIfNull(request.Scopes);
                 var token = await new DefaultAzureCredential().GetTokenAsync(new TokenRequestContext(request.Scopes.ToArray()));
-                return new TokenResponse { Status = TokenResponseStatus.Succeeded, Token = token.Token };
+                return TokenResponse.Succeeded(token.Token);
             }
         }
         catch (Exception exc)

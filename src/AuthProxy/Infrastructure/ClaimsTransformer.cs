@@ -15,32 +15,69 @@ public class ClaimsTransformer
         this.ClaimTransformations = claimTransformations;
     }
 
-    public async Task<ClaimsPrincipal?> TransformPrincipalAsync(ClaimsPrincipal? principal)
+    public Task<ClaimsPrincipal?> TransformPrincipalAsync(ClaimsPrincipal? principal)
+    {
+        return TransformIdentitiesAsync(principal?.Identities ?? Enumerable.Empty<ClaimsIdentity>());
+    }
+
+    public async Task<ClaimsPrincipal?> TransformIdentitiesAsync(IEnumerable<ClaimsIdentity> identities)
     {
         ArgumentNullException.ThrowIfNull(this.IdentityProvider.Configuration.Id);
-        var identities = new List<ClaimsIdentity>(3);
-        // Add a local identity with additional metadata about the authentication for future reference (internal to the proxy only).
-        var localIdentity = new ClaimsIdentity(new[]{
-            new Claim(Constants.ClaimTypes.Metadata.IdentityProviderId, this.IdentityProvider.Configuration.Id),
-            new Claim(Constants.ClaimTypes.Metadata.IdentityProviderType, this.IdentityProvider.Configuration.Type.ToString())
-        }, Constants.AuthenticationTypes.Metadata);
-        identities.Add(localIdentity);
-
-        var federatedIdentity = principal?.Identity as ClaimsIdentity;
-        if (federatedIdentity != null)
+        var newIdentities = new List<ClaimsIdentity>();
+        var metadataIdentity = default(ClaimsIdentity);
+        var claimsToTransform = new List<Claim>();
+        foreach (var identity in identities)
         {
-            // Add the original identity for future reference (internal to the proxy only).
-            identities.Add(federatedIdentity);
+            // Process each identity in the principal, except for the ones that are
+            // constructed by the claims transformer itself (if called multiple times).
+            if (identity.AuthenticationType == Constants.AuthenticationTypes.Metadata)
+            {
+                // Keep the existing metadata identity if it was already created by the claims transformer.
+                metadataIdentity = identity;
+            }
+            else if (identity.AuthenticationType == Constants.AuthenticationTypes.BackendApp)
+            {
+                // Skip the identity that was already transformed by the claims transformer in a
+                // previous pass, as a new one will be created based on the current set of claims.
+            }
+            else
+            {
+                // Add the original identity for future reference (internal to the proxy only).
+                newIdentities.Add(identity);
 
-            // Transform the incoming claims (to be sent to the backend app).
-            var transformedClaims = await TransformClaimsAsync(federatedIdentity.Claims);
-            var transformedIdentity = new ClaimsIdentity(transformedClaims, Constants.AuthenticationTypes.BackendApp);
-            identities.Add(transformedIdentity);
+                // Collect all claims from the identity to transform into a new identity for the backend app later on.
+                foreach (var claim in identity.Claims)
+                {
+                    // If the claim type is not already present in the transformed claims, add it to the list.
+                    // This avoids duplicating claims that are already transformed.
+                    if (!claimsToTransform.Any(c => c.Type.Equals(claim.Type, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        claimsToTransform.Add(claim);
+                    }
+                }
+            }
         }
-        // Create a new claims principal containing an identity holding the original claims from the IdP,
-        // an identity holding the transformed claims for the backend app, and a local identity with additional
+
+        // Transform the incoming claims into an identity that will be sent to the backend app.
+        var transformedClaims = await TransformClaimsAsync(claimsToTransform);
+        var backendAppIdentity = new ClaimsIdentity(transformedClaims, Constants.AuthenticationTypes.BackendApp);
+        newIdentities.Add(backendAppIdentity);
+
+        if (metadataIdentity == null)
+        {
+            // If no metadata identity was created yet, create a new local identity with additional
+            // metadata about the authentication for future reference (internal to the proxy only).
+            metadataIdentity = new ClaimsIdentity(new[]{
+                new Claim(Constants.ClaimTypes.Metadata.IdentityProviderId, this.IdentityProvider.Configuration.Id),
+                new Claim(Constants.ClaimTypes.Metadata.IdentityProviderType, this.IdentityProvider.Configuration.Type.ToString())
+            }, Constants.AuthenticationTypes.Metadata);
+        }
+        newIdentities.Add(metadataIdentity);
+
+        // Create a new claims principal containing the original identities, an identity holding
+        // the transformed claims for the backend app, and a local identity with additional
         // metadata about the authentication.
-        return new ClaimsPrincipal(identities);
+        return new ClaimsPrincipal(newIdentities);
     }
 
     private Task<IEnumerable<Claim>> TransformClaimsAsync(IEnumerable<Claim> claims)

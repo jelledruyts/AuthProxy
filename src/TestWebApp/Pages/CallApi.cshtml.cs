@@ -25,6 +25,7 @@ public class CallApiModel : PageModel
     public string ForwardCallDestinationUrl { get; set; } = "https://graph.microsoft.com/v1.0/me";
     public string? InfoMessage { get; set; }
     public string? GetTokenResult { get; set; }
+    public string? ErrorMessage { get; set; }
     public string? ForwardCallResult { get; set; }
 
     public CallApiModel(ILogger<IndexModel> logger, IHttpClientFactory httpClientFactory, IConfiguration configuration)
@@ -53,32 +54,38 @@ public class CallApiModel : PageModel
         this.ForwardCallDestinationUrl = this.Request.Query[nameof(ForwardCallDestinationUrl)].FirstOrDefault() ?? this.ForwardCallDestinationUrl;
     }
 
-    public async Task<IActionResult> OnPostGetToken()
+    public Task<IActionResult> OnPostGetTokenUsingProfile()
+    {
+        var request = new TokenRequest
+        {
+            Profile = this.TokenRequestProfile
+        };
+        return this.GetToken(request);
+    }
+
+    public Task<IActionResult> OnPostGetTokenManual()
+    {
+        var request = new TokenRequest
+        {
+            IdentityProvider = this.TokenRequestIdentityProvider,
+            Actor = this.TokenRequestActor,
+            Scopes = this.TokenRequestScopes?.Split(" ")
+        };
+        return this.GetToken(request);
+    }
+
+    private async Task<IActionResult> GetToken(TokenRequest request)
     {
         try
         {
             // If a redirect would be necessary, make the redirect URL return back to this page
             // with additional query parameters to remember the original request values.
-            var returnUrl = this.Url.Page("CallApi", null, new
+            request.ReturnUrl = this.Url.Page("CallApi", null, new
             {
                 TokenRequestProfile = this.TokenRequestProfile,
                 TokenRequestIdentityProvider = this.TokenRequestIdentityProvider,
                 TokenRequestScopes = this.TokenRequestScopes
             });
-
-            // Prepare the token request for the Auth Proxy API.
-            var request = new TokenRequest { ReturnUrl = returnUrl };
-            if (!string.IsNullOrWhiteSpace(this.TokenRequestProfile))
-            {
-                // A token request profile was requested, don't specify the other properties.
-                request.Profile = this.TokenRequestProfile;
-            }
-            else
-            {
-                request.IdentityProvider = this.TokenRequestIdentityProvider;
-                request.Actor = this.TokenRequestActor;
-                request.Scopes = this.TokenRequestScopes?.Split(" ");
-            }
 
             // Get an HTTP client to call the proxy's API.
             var httpClient = this.httpClientFactory.CreateClient();
@@ -102,7 +109,7 @@ public class CallApiModel : PageModel
             if (!responseMessage.IsSuccessStatusCode)
             {
                 // Something went wrong while calling the API itself.
-                this.GetTokenResult = responseMessage.StatusCode.ToString() + ". " + responseBody;
+                this.ErrorMessage = responseMessage.StatusCode.ToString() + ". " + responseBody;
             }
             else
             {
@@ -126,11 +133,16 @@ public class CallApiModel : PageModel
                     // be used to call a backend API of course).
                     this.GetTokenResult = tokenResponse?.Token;
                 }
+                else if (tokenResponse?.Status == TokenResponseStatus.Failed)
+                {
+                    // The token request failed, show the error message.
+                    this.ErrorMessage = tokenResponse?.ErrorMessage;
+                }
             }
         }
         catch (Exception exc)
         {
-            this.GetTokenResult = exc.ToString();
+            this.ErrorMessage = exc.ToString();
         }
         return Page();
     }
@@ -228,6 +240,7 @@ public class CallApiModel : PageModel
     public enum TokenResponseStatus
     {
         Succeeded,
+        Failed,
         RedirectRequired
     }
 
@@ -235,6 +248,7 @@ public class CallApiModel : PageModel
     {
         public TokenResponseStatus Status { get; set; }
         public string? Token { get; set; }
+        public string? ErrorMessage { get; set; }
         public string? RedirectUrl { get; set; }
         public IList<string>? RedirectCookies { get; set; }
     }

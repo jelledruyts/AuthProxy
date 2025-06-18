@@ -11,17 +11,20 @@
     <p class="alert alert-info">@Model.InfoMessage</p>
 }
 
-<form method="post" asp-page-handler="GetToken">
+<form method="post" asp-page-handler="GetTokenUsingProfile">
     <div class="alert alert-secondary">
-        <p class="mb-3 lead"><em>Either refer to a configured token request profile...</em></p>
+        <p class="mb-3 lead"><em>Option 1: Refer to a configured token request profile</em></p>
         <div class="mb-3">
             <label for="tokenRequestProfile" class="form-label">Profile</label>
             <input type="text" class="form-control" id="tokenRequestProfile" name="tokenRequestProfile" value="@Model.TokenRequestProfile">
         </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
     </div>
+</form>
 
+<form method="post" asp-page-handler="GetTokenManual">
     <div class="alert alert-secondary">
-        <p class="mb-3 lead"><em>Or specify the full token request details...</em></p>
+        <p class="mb-3 lead"><em>Option 2: Specify the full token request details</em></p>
         <div class="mb-3">
             <label for="tokenRequestIdentityProvider" class="form-label">Identity Provider</label>
             <input type="text" class="form-control" id="tokenRequestIdentityProvider" name="tokenRequestIdentityProvider" value="@Model.TokenRequestIdentityProvider">
@@ -47,14 +50,20 @@
                 <label class="form-check-label" for="tokenRequestActorAzureManagedIdentity">The Azure managed identity of the app</label>
             </div>
         </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
     </div>
-    <button type="submit" class="btn btn-primary">Submit</button>
 </form>
 
 @if (Model.GetTokenResult != null)
 {
-    <h3 class="mt-3">Result</h3>
+    <h3 class="mt-3">Token [<a href="https://authr.dev/#access_token=@(Model.GetTokenResult)" target="_blank" title="Decode this token">decode</a>]</h3>
     <pre class="alert alert-info" style="white-space: pre-wrap;"><code>@Model.GetTokenResult</code></pre>
+}
+
+@if (Model.ErrorMessage != null)
+{
+    <h3 class="mt-3">Error</h3>
+    <pre class="alert alert-danger" style="white-space: pre-wrap;"><code>@Model.ErrorMessage</code></pre>
 }
 
 <h2 class="mt-4">Forward Call</h2>

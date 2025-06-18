@@ -50,7 +50,7 @@ public class AuthProxyApiService
         if (this.AutoRedirectWhenRequired)
         {
             // The token request could not be completed, user interaction via a redirect was required.
-            if (tokenResponse.Status != TokenResponseStatus.Succeeded)
+            if (tokenResponse.Status == TokenResponseStatus.RedirectRequired)
             {
                 // Signal to the exception handler that a redirect is required.
                 throw new AuthProxyTokenAcquisitionException(tokenResponse);
