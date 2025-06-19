@@ -6,9 +6,9 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/AuthProxy/bin/Debug/net8.0/AuthProxy.dll",
+            "program": "${workspaceFolder}/src/AuthProxy.ReverseProxy/bin/Debug/net8.0/AuthProxy.ReverseProxy.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/src/AuthProxy",
+            "cwd": "${workspaceFolder}/src/AuthProxy.ReverseProxy",
             "stopAtEntry": false,
             "serverReadyAction": {
                 "action": "openExternally",

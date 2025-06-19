@@ -9,7 +9,7 @@ public static class HttpClientFactoryExtensions
 
     public static HttpClient CreateForwardApiHttpClient(this IHttpClientFactory httpClientFactory, string? returnUrl)
     {
-        var httpClient = httpClientFactory.CreateClient(AuthProxyConstants.HttpClientNames.ForwardApi);
+        var httpClient = httpClientFactory.CreateClient(Constants.HttpClientNames.ForwardApi);
         if (returnUrl != null)
         {
             httpClient.DefaultRequestHeaders.Add(AuthProxyConstants.HttpHeaderNames.ReturnUrl, returnUrl);

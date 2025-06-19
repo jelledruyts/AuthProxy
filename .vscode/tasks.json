@@ -23,7 +23,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/src/AuthProxy/AuthProxy.csproj",
+                "${workspaceFolder}/src/AuthProxy.ReverseProxy/AuthProxy.ReverseProxy.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -37,7 +37,7 @@
                 "watch",
                 "run",
                 "--project",
-                "${workspaceFolder}/src/AuthProxy/AuthProxy.csproj"
+                "${workspaceFolder}/src/AuthProxy.ReverseProxy/AuthProxy.ReverseProxy.csproj"
             ],
             "problemMatcher": "$msCompile"
         }

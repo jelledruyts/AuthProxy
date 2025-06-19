@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>aspnet-AuthProxy.ReverseProxy-d3183bbf-1d97-441b-b9d2-f95580da82a8</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.13.2" />
+    <PackageReference Include="Duende.AccessTokenManagement" Version="3.2.0" />
+    <PackageReference Include="Duende.AccessTokenManagement.OpenIdConnect" Version="3.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.15" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.15" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.WsFederation" Version="8.0.15" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.71.1" />
+    <PackageReference Include="Microsoft.Identity.Web.TokenCache" Version="3.8.4" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens.Saml" Version="8.9.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Validators" Version="8.9.0" />
+    <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../AuthProxy/AuthProxy.csproj" />
+  </ItemGroup>
+
+</Project>

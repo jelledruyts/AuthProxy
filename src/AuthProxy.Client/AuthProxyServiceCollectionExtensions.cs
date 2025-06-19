@@ -45,7 +45,7 @@ public static class AuthProxyServiceCollectionExtensions
             .AddHttpMessageHandler<AuthProxyAuthorizationHttpMessageHandler>();
 
         // Add a well-known HTTP client which has the HTTP message handler in its pipeline.
-        services.AddHttpClient(AuthProxyConstants.HttpClientNames.ForwardApi)
+        services.AddHttpClient(Constants.HttpClientNames.ForwardApi)
             .AddHttpMessageHandler<AuthProxyAuthorizationHttpMessageHandler>()
             .AddHttpMessageHandler<AuthProxyForwardApiHttpMessageHandler>();
 

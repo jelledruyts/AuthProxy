@@ -1,10 +1,6 @@
 namespace AuthProxy;
 
-// This file is shared with the AuthProxy.Client project, so that constants can be
-// maintained in one place, while still avoiding the projects to have a runtime
-// dependency on each other.
-
-public static partial class AuthProxyConstants
+public static class AuthProxyConstants
 {
     public static class HttpHeaderNames
     {
