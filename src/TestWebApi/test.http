@@ -1,12 +1,12 @@
 @token = ...
 #@token = {{$aadV2Token scopes:https://jelledruyts.onmicrosoft.com/authproxytestwebapp/identity.read tenantid:jelledruyts.onmicrosoft.com clientid:fb859816-0967-41eb-a59f-6a525d3fda8e}}
 
-###
+### Incoming token inspection
 
 GET https://localhost:7268/api/identity
 Authorization: Bearer {{token}}
 
-###
+### AzureAD - On-Behalf-Of token request
 
 POST https://localhost:7268/api/token
 Authorization: Bearer {{token}}
@@ -16,7 +16,7 @@ Content-Type: application/json
     "profile": "UserCallsGraph"
 }
 
-###
+### AzureAD - On-Behalf-Of token request to forward call to Microsoft Graph API
 
 POST https://localhost:7268/api/forwardcall?destinationUrl=https://graph.microsoft.com/v1.0/me
 Authorization: Bearer {{token}}

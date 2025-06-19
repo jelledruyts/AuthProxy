@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using AuthProxy.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace AuthProxy.IdentityProviders;
 
@@ -22,13 +23,24 @@ public class OpenIdConnectIdentityProviderJwtBearerEvents<TIdentityProvider> : J
         context.Principal = await this.ClaimsTransformer.TransformPrincipalAsync(context.Principal);
 
         // See if a JWT bearer token was validated.
-        var bearerToken = context.SecurityToken as JwtSecurityToken;
-        if (bearerToken != null && context.Principal != null)
+        if (context.Principal != null)
         {
-            // Add the token as a claim to the metadata identity so it can be used to look up the original
+            // Add the token as a claim to the roundtrip identity so it can be used to look up the original
             // token later, for example to perform an On-Behalf-Of flow.
-            var metadataIdentity = context.Principal.GetOrCreateIdentity(Constants.AuthenticationTypes.Metadata);
-            metadataIdentity.AddClaim(new Claim(OpenIdConnectIdentityProvider.ClaimTypeBearerToken, bearerToken.RawData));
+            var rawToken = default(string?);
+            if (context.SecurityToken is JwtSecurityToken jwtSecurityToken)
+            {
+                rawToken = jwtSecurityToken.RawData;
+            }
+            if (context.SecurityToken is JsonWebToken jsonWebToken)
+            {
+                rawToken = jsonWebToken.EncodedToken;
+            }
+            if (rawToken != null)
+            {
+                var roundTripIdentity = context.Principal.GetOrCreateIdentity(Constants.AuthenticationTypes.RoundTrip);
+                roundTripIdentity.AddClaim(new Claim(Constants.ClaimTypes.BearerToken, rawToken));
+            }
         }
     }
 }

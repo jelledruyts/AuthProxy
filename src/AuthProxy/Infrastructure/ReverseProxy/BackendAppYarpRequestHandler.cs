@@ -56,21 +56,21 @@ public class BackendAppYarpRequestHandler : BaseYarpRequestHandler
                     if (inboundPolicy.IdentityProviders != null && inboundPolicy.IdentityProviders.Any())
                     {
                         var metadataIdentity = httpContext.User.GetIdentity(Constants.AuthenticationTypes.Metadata);
-                        var idpIdClaim = metadataIdentity?.FindFirst(Constants.ClaimTypes.Metadata.IdentityProviderId);
+                        var idpIdClaim = metadataIdentity?.FindFirst(Constants.ClaimTypes.IdentityProviderId);
                         if (idpIdClaim == null || !inboundPolicy.IdentityProviders.Contains(idpIdClaim.Value, StringComparer.OrdinalIgnoreCase))
                         {
-                            // The user was authenticated but NOT with one of the allowed IdPs specified on the policy.
-                            // TODO: Allow configuration to decide what to do when authenticated but not with a matching IdP:
-                            // either force authentication to an explicitly specified IdP or deny the request.
-                            return await ForbiddenAsync(httpContext);
+                            // The user was authenticated but NOT with one of the allowed IdPs specified on the policy;
+                            // allow configuration to decide what to do when authenticated but not with a matching IdP:
+                            // either force authentication to the first explicitly specified (or default) IdP or deny the request.
+                            return await HandleConflictAsync(inboundPolicy.AuthenticatedWithUnallowedIdentityProviderAction, httpContext, identityProviders);
                         }
                     }
                 }
                 else
                 {
-                    // The user is not yet authenticated, trigger an authentication from the first configured (or default) IdP.
-                    await identityProviders.First().ChallengeAsync(httpContext);
-                    return false;
+                    // The user is not yet authenticated; allow configuration to decide what to do:
+                    // either force authentication to the first explicitly specified (or default) IdP or deny the request.
+                    return await HandleConflictAsync(inboundPolicy.UnauthenticatedAction, httpContext, identityProviders);
                 }
             }
             else if (inboundPolicy.Action == InboundPolicyAction.Deny)
@@ -87,6 +87,19 @@ public class BackendAppYarpRequestHandler : BaseYarpRequestHandler
     protected override string? GetDestinationPrefix(HttpContext httpContext)
     {
         return this.backendAppUrl;
+    }
+
+    private async Task<bool> HandleConflictAsync(InboundPolicyConflictAction conflictAction, HttpContext httpContext, IList<IdentityProvider> identityProviders)
+    {
+        if (conflictAction == InboundPolicyConflictAction.Deny)
+        {
+            return await ForbiddenAsync(httpContext);
+        }
+        else
+        {
+            await identityProviders.First().ChallengeAsync(httpContext);
+            return false;
+        }
     }
 
     private InboundPolicyConfig? GetMatchingInboundPolicy(HttpRequest request)

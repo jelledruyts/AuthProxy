@@ -40,8 +40,8 @@ public class AzureADIdentityProviderEvents : OpenIdConnectIdentityProviderEvents
         if (accountId != null && context.Principal != null)
         {
             // Add the account identifier claim so it can be used to look up the user's tokens later.
-            var metadataIdentity = context.Principal.GetOrCreateIdentity(Constants.AuthenticationTypes.Metadata);
-            metadataIdentity.AddClaim(new Claim(AzureADIdentityProvider.ClaimTypeHomeAccountId, accountId));
+            var roundTripIdentity = context.Principal.GetOrCreateIdentity(Constants.AuthenticationTypes.RoundTrip);
+            roundTripIdentity.AddClaim(new Claim(AzureADIdentityProvider.ClaimTypeHomeAccountId, accountId));
         }
         return Task.CompletedTask;
     }

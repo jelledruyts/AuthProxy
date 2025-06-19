@@ -33,15 +33,14 @@ public static class Constants
         public const string Metadata = "AuthProxy.Metadata";
         public const string BackendApp = "AuthProxy.BackendApp";
         public const string UserInfo = "AuthProxy.UserInfo";
+        public const string RoundTrip = "AuthProxy.RoundTrip";
     }
 
     public static class ClaimTypes
     {
-        public static class Metadata
-        {
-            public const string IdentityProviderId = "idp.id";
-            public const string IdentityProviderType = "idp.type";
-        }
+        public const string IdentityProviderId = "idp.id";
+        public const string IdentityProviderType = "idp.type";
+        public const string BearerToken = "bearer_token";
     }
 
     public static class HttpHeaders

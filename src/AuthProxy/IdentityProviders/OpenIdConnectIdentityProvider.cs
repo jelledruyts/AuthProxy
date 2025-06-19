@@ -13,7 +13,6 @@ namespace AuthProxy.IdentityProviders;
 
 public class OpenIdConnectIdentityProvider : IdentityProvider
 {
-    public const string ClaimTypeBearerToken = "bearer_token";
     private OpenIdConnectOptions? openIdConnectOptions;
     private OpenIdConnectClientConfiguration? oidcConfiguration;
     private ClientCredentialsClient? clientCredentialsClient;

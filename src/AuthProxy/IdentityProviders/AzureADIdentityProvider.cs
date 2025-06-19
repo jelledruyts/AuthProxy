@@ -109,8 +109,7 @@ public class AzureADIdentityProvider : OpenIdConnectIdentityProvider
                 else
                 {
                     // There is no cached user account, check if there is a bearer token.
-                    // TODO-H: Check if this still works, and if the original bearer token can't be retrieved from the "saved" tokens.
-                    var bearerToken = httpContext.User.FindFirst(OpenIdConnectIdentityProvider.ClaimTypeBearerToken)?.Value;
+                    var bearerToken = httpContext.User.FindFirst(Constants.ClaimTypes.BearerToken)?.Value;
                     if (bearerToken != null)
                     {
                         token = await confidentialClientApplication.AcquireTokenOnBehalfOf(request.Scopes, new UserAssertion(bearerToken)).ExecuteAsync();

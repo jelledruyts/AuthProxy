@@ -68,8 +68,8 @@ public class ClaimsTransformer
             // If no metadata identity was created yet, create a new local identity with additional
             // metadata about the authentication for future reference (internal to the proxy only).
             metadataIdentity = new ClaimsIdentity(new[]{
-                new Claim(Constants.ClaimTypes.Metadata.IdentityProviderId, this.IdentityProvider.Configuration.Id),
-                new Claim(Constants.ClaimTypes.Metadata.IdentityProviderType, this.IdentityProvider.Configuration.Type.ToString())
+                new Claim(Constants.ClaimTypes.IdentityProviderId, this.IdentityProvider.Configuration.Id),
+                new Claim(Constants.ClaimTypes.IdentityProviderType, this.IdentityProvider.Configuration.Type.ToString())
             }, Constants.AuthenticationTypes.Metadata);
         }
         newIdentities.Add(metadataIdentity);

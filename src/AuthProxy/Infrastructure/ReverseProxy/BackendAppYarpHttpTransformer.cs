@@ -56,7 +56,8 @@ public class BackendAppYarpHttpTransformer : BaseHttpTransformer
         // Instead, we create a JWT issued by the proxy's internal token issuer, which is never sent back to the
         // browser but is only seen by the backend app.
         // TODO: Make configurable if and how to pass the token to the app; could also be disabled or in custom header with custom format.
-        var roundTripToken = this.tokenIssuer.CreateToken(Array.Empty<Claim>(), TokenIssuer.ApiAudience);
+        var roundTripIdentity = httpContext.User.GetOrCreateIdentity(Constants.AuthenticationTypes.RoundTrip);
+        var roundTripToken = this.tokenIssuer.CreateToken(roundTripIdentity, TokenIssuer.ApiAudience);
         proxyRequest.Headers.Add(AuthProxyConstants.HttpHeaderNames.CallbackHeaderPrefix + HeaderNames.Authorization, $"{Constants.HttpHeaders.Bearer} {roundTripToken}");
 
         // Inject headers containing the callback API paths to avoid that the backend app has to hard-code these.
