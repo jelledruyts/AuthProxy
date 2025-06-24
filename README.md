@@ -1,6 +1,12 @@
 # Auth Proxy
 
-This project intends to remove identity complexity around authentication and authorization as much as possible from web application developers, and instead encapsulate identity protocols, authentication flows, authentication cookies, token acquisition and caching, ... in a completely separate process which sits in front of the app as a reverse proxy. This allows the web application to offload those concerns to an independent layer which embodies best practices and which can be updated separately as identity standards and patterns evolve. The application itself then only needs to work through simple native HTTP constructs and API's to receive and request identity-related information from the proxy.
+Identity standards - and especially OpenID Connect and OAuth 2.0 - are constantly evolving with new specifications and best practices to improve security. For a development team however, it's often challenging to keep up with these evolutions after the initial requirements were covered, leaving them and their users increasingly at risk as time progresses.
+
+This project intends to remove identity complexity around authentication and authorization as much as possible from server-side web application developers, and instead encapsulate identity protocols, authentication flows, authentication cookies, token acquisition and caching, ... in a completely separate process which sits in front of the application server as a reverse proxy. This allows the web application to offload those concerns to an independent layer which embodies best practices and which can be updated separately as identity standards and patterns evolve.
+
+The web application itself then only needs to work through simple native HTTP constructs and API's to receive and request identity-related information from the proxy, without needing to know or implement any protocol-specific requirements. This makes upgrading to new versions of the proxy easy and non-intrusive for the backend application, as new identity functionality can typically be implemented without changing the backend application itself.
+
+Given this has similar goals as the [Backend-For-Frontend (BFF)](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-browser-based-apps#name-backend-for-frontend-bff) architecture for browser-based apps, you can think of this as a **Backend-For-Backend (BFB)** solution, where the proxy acts as a backend facade for the final backend web application.
 
 ## How Does It Work?
 
@@ -16,7 +22,9 @@ To allow a user to log in, the backend app can render a link to the appropriate 
 
 As of then, the proxy adds HTTP headers towards the backend app with information about the authenticated user by means of a standard [JWT token](https://datatracker.ietf.org/doc/html/rfc7519). The app therefore only needs to be able to work with standard JWT bearer tokens (which is traditionally supported in most platforms) and never has to deal with identity protocols, redirect flows, session cookies, ...
 
-This process is illustrated in a **[swimlane diagram of a typical login flow](https://swimlanes.io/u/q2ktfBSZG)**.
+This process is illustrated in the following **[swimlane diagram of a typical login flow](https://swimlanes.io/u/q2ktfBSZG)**:
+
+[![Swimlane diagram of a typical login flow](media/swimlane-login.png)](https://swimlanes.io/u/q2ktfBSZG)
 
 Alternatively to providing a login link, you can also configure [inbound policies](#inbound-policies) to specify which paths in the application should be authenticated, so that a request for `/account` for example will always ensure that the user is logged in before even being able to reach that URL on the backend app.
 
@@ -26,7 +34,9 @@ When the backend app wants to call a downstream service secured by one of its Id
 
 For improved security, it's even possible to avoid exposure of the token (which is a security credential, in the end) to the backend app altogether, by using the "forward" API at `/.auth/api/forward`. In this case, the backend app sends an HTTP request *as if it were intended for the downstream service* - except that it sends it to the proxy and adds a specific HTTP header with the *intended destination* of the request. By configuring an [outbound policy](#outbound-policies) on the proxy, it knows to acquire an appropriate token for that destination. The proxy acquires the token and appends it as an authorization header on the outgoing request towards the downstream service. The backend app simply receives the response from the service without even having to deal with tokens at all.
 
-This process is illustrated in a **[swimlane diagram of a typical scenario with an inbound policy as well as use of the "forward" and "token" APIs](https://swimlanes.io/u/ucJZKyx6z)**.
+This process is illustrated in the following **[swimlane diagram of a typical scenario with an inbound policy as well as use of the "forward" and "token" APIs](https://swimlanes.io/u/ucJZKyx6z)**:
+
+[![Swimlane diagram of a typical scenario with an inbound policy as well as use of the "forward" and "token" APIs](media/swimlane-tokens.png)](https://swimlanes.io/u/ucJZKyx6z)
 
 ## Guiding Principles
 
@@ -226,6 +236,10 @@ You can define one or more IdPs which the proxy can use to log users in or acqui
 - [X] OpenID Connect
 - [X] WS-Federation
 - [ ] OAuth 2.0
+  - [ ] [Demonstrating Proof-of-Posession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449), both when requesting tokens from a client application, as well as when validating the DPoP proof from a resource server
+  - [ ] [Pushed Authorization Requests (PAR)](https://datatracker.ietf.org/doc/html/rfc9126)
+  - [ ] [Client-Initiated Backchannel Authentication (CIBA)](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html)
+  - [ ] ...
 - [ ] SAML 2.0
 
 Furthermore, you can also define an IdP to be a specific type which allows the proxy to use vendor-specific functionality:
