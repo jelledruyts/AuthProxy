@@ -234,11 +234,11 @@ You can configure the name of the authentication session cookie issued by the pr
 You can define one or more IdPs which the proxy can use to log users in or acquire tokens from. You give each IdP an id, so that you can refer to it in URLs and from other places like [token request profiles](#token-request-profiles). IdPs using any of the following identity protocols are supported:
 
 - [X] OpenID Connect
+  - [ ] [Client-Initiated Backchannel Authentication (CIBA)](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html)
 - [X] WS-Federation
 - [ ] OAuth 2.0
   - [ ] [Demonstrating Proof-of-Posession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449), both when requesting tokens from a client application, as well as when validating the DPoP proof from a resource server
   - [ ] [Pushed Authorization Requests (PAR)](https://datatracker.ietf.org/doc/html/rfc9126)
-  - [ ] [Client-Initiated Backchannel Authentication (CIBA)](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html)
   - [ ] ...
 - [ ] SAML 2.0
 
